@@ -70,14 +70,15 @@
 # Get folder that this PS1 file is in so that we can find files correctly from relative references
 $executingScriptDirectory = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # Bring in common utility code
-Import-Module $executingScriptDirectory\SilentInstall_Utilities.ps1
+Import-Module $executingScriptDirectory\SilentInstall_Utilities.psm1
 
-Set_PSWinSize 80 48
-Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $false 
+Set_PSWinSize 80 48 5 5
+Set_PSWinColors 'Black' 'White' 'PowerShell - SilentInstall.ps1' $false 
 
 # Ensure we are running elevated
 SilentInstall-EnsureElevated $PSCommandPath
 
+Set_PSWinSize 80 48 10 10
 Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $true 
 
 Write-host 'Starting - SilentInstall.ps1'
@@ -128,7 +129,7 @@ $DoFlushNgen = $true
 #        Shortcut removals (from variables)
 #        File removals (from variables)
 #        NGen scripts discovered in the primary install folder.
-SilentInstall-PrimaryInstallations
+SilentInstall_PrimaryInstallations
 #                         end of Main Processing area
 #--------------------------------------------------------------------------------
 
@@ -138,11 +139,11 @@ SilentInstall-PrimaryInstallations
 #  MAKE ADDITIONAL CUSTOMIZATIONS NOT SUPPORTED BY TOOLING AS NEEDED HERE
 #if ([Environment]::Is64BitOperatingSystem -eq $true ) 
 #{
-#    New-Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
+#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
 #}
 #else
 #{
-#    New-Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files (x86)\installfolder\app.exe"
+#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files (x86)\installfolder\app.exe"
 #}
 #                   end of ADDITIONAL CUSTOMIZATION AREA
 #========================================================================
@@ -155,10 +156,10 @@ SilentInstall-PrimaryInstallations
 #                  Standard wrapup area (DO NOT MODIFY)
 #Ngen final flush (Do Not modify)
 if ($DoFlushNgen -eq $true) {
-    SilentInstall-FlushNGensQueues
+    SilentInstall_FlushNGensQueues
 }
 write-host -ForegroundColor "Green"  "Done."
-Sleep 5
+Start-Sleep 5
 #                    end
 #---------------------------------------------------------------
 
