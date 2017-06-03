@@ -72,13 +72,12 @@ $executingScriptDirectory = Split-Path -Path $MyInvocation.MyCommand.Definition 
 # Bring in common utility code
 Import-Module $executingScriptDirectory\SilentInstall_Utilities.psm1
 
-Set_PSWinSize 80 48 5 5
-Set_PSWinColors 'Black' 'White' 'PowerShell - SilentInstall.ps1' $false 
+Set_PSWinSize 80 48
+Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $false 
 
 # Ensure we are running elevated
-SilentInstall-EnsureElevated $PSCommandPath
+SilentInstall_EnsureElevated $PSCommandPath
 
-Set_PSWinSize 80 48 10 10
 Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $true 
 
 Write-host 'Starting - SilentInstall.ps1'
@@ -89,8 +88,8 @@ Write-host 'Starting - SilentInstall.ps1'
 
 #==================================================================================
 #                    MAKE PRIMARY CUSTOMIZATIONS HERE
-$Installers_x64Hash.Add( 'xxx_x64.exe', '/S' )
-$Installers_x86Hash.Add( 'xxx_.exe', '/S' )
+$Installers_x64Hash.Add( '7z1604-x64.exe', '/S' )
+$Installers_x86Hash.Add( '7z1604.exe',     '/S' )
 
 #$Installers_x64Hash.Add( 'xxx_x64.zip', $env:APPDATA )
 #$Installers_x86Hash.Add( 'xxx_.zip', $env:APPDATA )
@@ -100,14 +99,15 @@ $Installers_x86Hash.Add( 'xxx_.exe', '/S' )
 
 # note: This file contains output of this script and gets copyied to the base folder for packages by the autosequencer, so
 #       you should use the package name as part of name as it will overwrite.
-$InstallerLogFile = $InstallerLogFolder+'\Log_xxx.txt'
+$InstallerLogFile = $InstallerLogFolder+'\Log_7Zip.txt'
 
 #$DesktopShortcutsToRemove = "xxx.lnk, yyy.lnk"
-#$StartMenuShortcutsToRemove = ""
+$StartMenuShortcutsToRemove = '7-Zip\7-Zip Help'
 #$StartMenuFoldersToRemove = ""
 
-#$FilesToRemove_x64 = "'C:\Program Files (x86)\Folder\uninstall.exe', 'C:\Windows\Installers\foo.msi'"
-#$FilesToRemove_x86 = "'C:\Program Files\Folder\uninstall.exe', 'C:\Windows\Installers\foo.msi'"
+
+$FilesToRemove_x64 = "C:\Program Files\7-Zip\Uninstall.exe"
+$FilesToRemove_x86 = "C:\Program Files\7-Zip\Uninstall.exe"
 
 $DoFlushNgen = $true
 
@@ -139,11 +139,11 @@ SilentInstall_PrimaryInstallations
 #  MAKE ADDITIONAL CUSTOMIZATIONS NOT SUPPORTED BY TOOLING AS NEEDED HERE
 #if ([Environment]::Is64BitOperatingSystem -eq $true ) 
 #{
-#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
+#    New-Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
 #}
 #else
 #{
-#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files (x86)\installfolder\app.exe"
+#    New-Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files (x86)\installfolder\app.exe"
 #}
 #                   end of ADDITIONAL CUSTOMIZATION AREA
 #========================================================================
