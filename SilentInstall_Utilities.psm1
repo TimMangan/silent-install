@@ -25,7 +25,7 @@
 #--------------------------------------------------------------------------------------------------
 # Declarations
 #   To simplify the use of this module, it declares a set of variables here that will be 
-#   modified by the caller prior to calling the SilentInstall-PrimaryInstallations function.
+#   modified by the caller prior to calling the SilentInstall_PrimaryInstallations function.
 #   If left null or empty, the actions associated with this item will be skipped. 
 $Installers_x64Hash = new-object System.Collections.Specialized.OrderedDictionary
 $Installers_x86Hash = new-object System.Collections.Specialized.OrderedDictionary
