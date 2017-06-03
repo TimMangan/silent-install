@@ -919,8 +919,7 @@ function Run_RegFiles([string]$executingScriptDirectory)
     $cnt = 0
     #---------------------------------------------------------------
     #Look for a .reg file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object 
-    {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object  {
         if ($_.FullName -like "*x64.reg") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
@@ -973,8 +972,7 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
     $psexeNative = Get_PowerShellNativePath
     #---------------------------------------------------------------
     #Look for a .ps1 file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object 
-    {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object  {
         $xtmp = $_.FullName
         if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1") 
         {
@@ -1031,8 +1029,7 @@ function Remove_DesktopShortcut([string]$ShortcutName)
         $testpublicdesktop = $env:PUBLIC + '\Desktop'
         $testuserdesktop =  $env:USERPROFILE + '\Desktop'
     
-        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object 
-        {
+        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object  {
             #LogMe_AndDisplay 'Checking $_'  $InstallerLogFile
             if ($_.Name -eq $shortcutnamewithlnk ) 
             { 
@@ -1043,8 +1040,7 @@ function Remove_DesktopShortcut([string]$ShortcutName)
             }
         }
     
-        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object 
-        {
+        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object  {
             #write-host 'checking' $_ '.name=' $_.Name 
             if ($_.Name -eq $shortcutnamewithlnk  ) 
             { 
@@ -1179,8 +1175,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
     $psexeNative = Get_PowerShellNativePath
     #---------------------------------------------------------------
     #Look for a .ps1 file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object 
-    {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
         if ($xtmp -like "*x64OSPostInstall_ExtraNgen.ps1" -or $xtmp -like "*PostInstall_ExtraNgen_x64.ps1" ) 
         {
