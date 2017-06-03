@@ -87,8 +87,8 @@ Function SilentInstall_EnsureElevated
     $psexeNative = Get_PowerShellNativePath
 
     # Ensure we are running as an admin, if not relaunch
-    $local.currentPrincipal = New-Object Security.Principal.WindowsPrincipal( [Security.Principal.WindowsIdentity]::GetCurrent() ) 
-    if (!$local.currentPrincipal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )) 
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal( [Security.Principal.WindowsIdentity]::GetCurrent() ) 
+    if (!$currentPrincipal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )) 
     { 
         # User is not an admin and does not have rights to install, so let's elevate (there will be a prompt).
 	    (get-host).UI.RawUI.Backgroundcolor="LightGray" 
@@ -263,12 +263,12 @@ Function SilentInstall_SaveLogFile
   )
   Process {
     
-    $local.logheader  =  "------->INSTALLER LOG: "+$logfile2save 
-    LogMe_AndDisplay $local.logheader $InstallerLogFile
+    $logheader  =  "------->INSTALLER LOG: "+$logfile2save 
+    LogMe_AndDisplay $logheader $InstallerLogFile
     if (Test-Path $logfile2save)
     {
-        $local.l1 = Get-Content $logfile2save
-        LogMe_AndDisplay $local.l1 $InstallerLogFile 
+        $l1 = Get-Content $logfile2save
+        LogMe_AndDisplay $l1 $InstallerLogFile 
     }
     else
     {
@@ -614,15 +614,15 @@ Function Flush_NGensQueues
   Process 
   {
 
-    [string[]]$local.NgenPotentials =  "C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework\v4.0.30319\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe"
+    [string[]]$NgenPotentials =  "C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework\v4.0.30319\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe"
     
     LogMe_AndDisplay "Flushing NGen Queues" $InstallerLogFile 
-    foreach ($ng in $local.NgenPotentials)
+    foreach ($ng in $NgenPotentials)
     {
         if(Test-Path $ng )
         {
-            $local.log =  "    Flushing queue with"+$ng
-            LogMe_AndDisplay $local.log $InstallerLogFile 
+            $log =  "    Flushing queue with"+$ng
+            LogMe_AndDisplay $log $InstallerLogFile 
             Start-Process -Filepath $ng executeQueuedItems  -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile
         }
@@ -675,17 +675,17 @@ Function Set_PSWinSize
   {     
     if ($Host.Name -match "console") 
     { 
-        $Local.MyWindowSize = $Host.UI.RawUI.WindowSize 
-        $Local.MyWindowSize.Height = ($MaxHeight) 
-        $Local.MyWindowSize.Width = ($Maxwidth)
+        $MyWindowSize = $Host.UI.RawUI.WindowSize 
+        $MyWindowSize.Height = ($MaxHeight) 
+        $MyWindowSize.Width = ($Maxwidth)
 
-        $host.UI.RawUI.set_windowSize($Local.MyWindowSize)
+        $host.UI.RawUI.set_windowSize($MyWindowSize)
         if ($PosX -gt 0 -and $PosY -gt 0)
         {
-            $Local.MyWindowPos = $Host.UI.RawUI.WindowPosition
-            $Local.MyWindowPos.X = ($PosX)
-            $Local.MyWindowPos.Y = ($PosY)
-            $host.UI.RawUI.set_windowPosition($Local.MyWindowPos)
+            $MyWindowPos = $Host.UI.RawUI.WindowPosition
+            $MyWindowPos.X = ($PosX)
+            $MyWindowPos.Y = ($PosY)
+            $host.UI.RawUI.set_windowPosition($MyWindowPos)
         } 
     } 
   }
@@ -787,84 +787,84 @@ Function Run_Installers(
 {
     LogMe_AndDisplay "Starting installations." $InstallerLogFile 
     $psexeNative = Get_PowerShellNativePath
-    $local.InstallerFiles_Hash = New-Object System.Collections.Specialized.OrderedDictionary
+    $InstallerFiles_Hash = New-Object System.Collections.Specialized.OrderedDictionary
     if ([Environment]::Is64BitOperatingSystem -eq $true ) 
     { 
-        $local.InstallerFiles_Hash = $Installers_x64Hash 
+        $InstallerFiles_Hash = $Installers_x64Hash 
     }
     else 
     { 
-        $local.InstallerFiles_Hash = $Installers_x86Hash 
+        $InstallerFiles_Hash = $Installers_x86Hash 
     }
 
-    foreach ($InstallerFileHash in $local.InstallerFiles_Hash.GetEnumerator()) 
+    foreach ($InstallerFileHash in $InstallerFiles_Hash.GetEnumerator()) 
     {
-        $local.tmpNoWait = $false
+        $tmpNoWait = $false
         if ($InstallerFileHash.Key.Contains(':\'))
         {
-            $local.installer = $InstallerFileHash.Key
-            if ($local.installer.StartsWith('-')) 
+            $installer = $InstallerFileHash.Key
+            if ($installer.StartsWith('-')) 
             { 
                 #Used to solve issue with Paint.Net installer that rolls back using the normal method for an unknown reason.
-                $local.installer = $local.installer.Substring(1) 
-                $local.tmpNoWait = $true;        
+                $installer = $installer.Substring(1) 
+                $tmpNoWait = $true;        
             }
         }
         else
         {
-            $local.installer = $executingScriptDirectory + '\' + $InstallerFileHash.Key
+            $installer = $executingScriptDirectory + '\' + $InstallerFileHash.Key
             if ($InstallerFileHash.Key.StartsWith('-')) 
             { 
                 #Used to solve issue with Paint.Net installer that rolls back using the normal method for an unknown reason.
-                $local.installer =$executingScriptDirectory + '\' + $InstallerFileHash.Key.Substring(1)         
-                $local.tmpNoWait = $true;        
+                $installer =$executingScriptDirectory + '\' + $InstallerFileHash.Key.Substring(1)         
+                $tmpNoWait = $true;        
             }
         }
 
-        if ($local.installer.ToLower().EndsWith(".msi")) 
+        if ($installer.ToLower().EndsWith(".msi")) 
         { 
-            $local.log = '    running process -FilePath msiexec -ArgumentList /i, '+$local.installer+', '+$InstallerFileHash.Value+' -Wait'
-            LogMe_AndDisplay $local.log   $InstallerLogFile 
-            Start-Process -FilePath msiexec -ArgumentList /i, """$local.installer""", $InstallerFileHash.Value -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            $log = '    running process -FilePath msiexec -ArgumentList /i, '+$installer+', '+$InstallerFileHash.Value+' -Wait'
+            LogMe_AndDisplay $log   $InstallerLogFile 
+            Start-Process -FilePath msiexec -ArgumentList /i, """$installer""", $InstallerFileHash.Value -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile  
         }
-        elseif ($local.installer.ToLower().EndsWith(".msp")) 
+        elseif ($installer.ToLower().EndsWith(".msp")) 
         {
-            $local.log = '    running process -FilePath msiexec -ArgumentList /update, '+$local.installer+', '+$InstallerFileHash.Value+' -Wait'  
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            Start-Process -FilePath msiexec -ArgumentList /update, """$local.installer""", $InstallerFileHash.Value -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            $log = '    running process -FilePath msiexec -ArgumentList /update, '+$installer+', '+$InstallerFileHash.Value+' -Wait'  
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -FilePath msiexec -ArgumentList /update, """$installer""", $InstallerFileHash.Value -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile       
         }
-        elseif ($local.installer.ToLower().EndsWith(".zip"))
+        elseif ($installer.ToLower().EndsWith(".zip"))
         {
-            $local.log = '    extracting files from '+$local.installer+' to '+$InstallerFileHash.Value
+            $log = '    extracting files from '+$installer+' to '+$InstallerFileHash.Value
             LogMe_AndDisplay $log $InstallerLogFile
             Add-Type -AssemblyName "system.io.compression.filesystem"
-            [io.compression.zipfile]::ExtractToDirectory($local.installer,$InstallerFileHash.Value) 
+            [io.compression.zipfile]::ExtractToDirectory($installer,$InstallerFileHash.Value) 
         }
-        elseif ($local.installer.ToLower().EndsWith(".ps1")) 
+        elseif ($installer.ToLower().EndsWith(".ps1")) 
         {
-            $local.log = '    running process -FilePath ' +$psexeNative+ ' -ArgumentList -NoProfile, -ExecutionPolicy, Bypass, -File '+$local.installer+', '+$InstallerFileHash.Value+' -Wait'  
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", """$local.installer""",  $InstallerFileHash.Value -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            $log = '    running process -FilePath ' +$psexeNative+ ' -ArgumentList -NoProfile, -ExecutionPolicy, Bypass, -File '+$installer+', '+$InstallerFileHash.Value+' -Wait'  
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", """$installer""",  $InstallerFileHash.Value -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile       
         }
         else
         {
-            if ($local.tmpNoWait)
+            if ($tmpNoWait)
             { 
                 #Used to solve issue with Paint.Net installer that rolls back using the normal method for an unknown reason.
-                $local.xx = '/c '+$local.installer+' '+$InstallerFileHash.Value 
-                $local.log = '    running c:\windows\system32\cmd.exe ' + $local.xx 
-                LogMe_AndDisplay $local.log $InstallerLogFile
-                c:\windows\system32\cmd.exe $local.xx
+                $xx = '/c '+$installer+' '+$InstallerFileHash.Value 
+                $log = '    running c:\windows\system32\cmd.exe ' + $xx 
+                LogMe_AndDisplay $log $InstallerLogFile
+                c:\windows\system32\cmd.exe $xx
                 Start-Sleep 90
             }
             else
             {
-                $local.log = '    running process -FilePath '+"""$local.installer"""+' -ArgumentList '+$InstallerFileHash.Value+' -Wait' 
-                LogMe_AndDisplay $local.log $InstallerLogFile
-                Start-Process  -FilePath """$local.installer""" -ArgumentList $InstallerFileHash.Value   -Wait   -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log -LoadUserProfile 
+                $log = '    running process -FilePath '+"""$installer"""+' -ArgumentList '+$InstallerFileHash.Value+' -Wait' 
+                LogMe_AndDisplay $log $InstallerLogFile
+                Start-Process  -FilePath """$installer""" -ArgumentList $InstallerFileHash.Value   -Wait   -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log -LoadUserProfile 
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
             } 
         }
@@ -916,7 +916,7 @@ function Run_CopyFiles(
 function Run_RegFiles([string]$executingScriptDirectory)
 {
     LogMe_AndDisplay "Starting any registration imports." $InstallerLogFile 
-    $local.cnt = 0
+    $cnt = 0
     #---------------------------------------------------------------
     #Look for a .reg file to import
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object 
@@ -925,31 +925,31 @@ function Run_RegFiles([string]$executingScriptDirectory)
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
-                $local.log = '    importing for x64 '+ $_.FullName
-                LogMe_AndDisplay $local.log $InstallerLogFile 
+                $log = '    importing for x64 '+ $_.FullName
+                LogMe_AndDisplay $log $InstallerLogFile 
                 reg import $_.FullName
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
             }
         }
         elseif ($_.FullName -like "*x86.reg") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
-                $local.log =  '    importing for x86 '+ $_.FullName 
-                LogMe_AndDisplay $local.log $InstallerLogFile 
+                $log =  '    importing for x86 '+ $_.FullName 
+                LogMe_AndDisplay $log $InstallerLogFile 
                 reg import $_.FullName
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
             }
         }
         else 
         {
-            $local.log = '    importing '+$_.FullName  
-            LogMe_AndDisplay $local.log $InstallerLogFile
+            $log = '    importing '+$_.FullName  
+            LogMe_AndDisplay $log $InstallerLogFile
             reg import $_.FullName
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
         }
     }
-    if ($local.cnt -eq 0) 
+    if ($cnt -eq 0) 
     { 
         LogMe_AndDisplay "    No valid registry files were located."  $InstallerLogFile 
     }
@@ -969,45 +969,45 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
 {
 
     LogMe_AndDisplay "Starting any Post-Install App Capabilities scripts." $InstallerLogFile 
-    $local.cnt = 0
+    $cnt = 0
     $psexeNative = Get_PowerShellNativePath
     #---------------------------------------------------------------
     #Look for a .ps1 file to import
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object 
     {
-        $local.xtmp = $_.FullName
+        $xtmp = $_.FullName
         if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
-                $local.log = '    running script for x64 '+ $local.xtmp
-                LogMe_AndDisplay $local.log $InstallerLogFile 
-                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$local.xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                $log = '    running script for x64 '+ $xtmp
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
             }
         }
         elseif ($_.FullName -like "*Generate_AppCapabilities_x86.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
-                $local.log = '    running script for x86 '+ $local.xtmp 
-                LogMe_AndDisplay $local.log $InstallerLogFile 
-                Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$local.xtmp`""   -Wait -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                $log = '    running script for x86 '+ $xtmp 
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
             }
         }
         elseif ($_.FullName -like "*Generate_AppCapabilities.ps1") 
         {
-            $local.log = '    running script '+ $local.xtmp 
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$local.xtmp`""   -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            $log = '    running script '+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
-            $local.cnt = $local.cnt + 1
+            $cnt = $cnt + 1
         }
     }
-    if ($local.cnt -eq 0) 
+    if ($cnt -eq 0) 
     { 
         LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
     }
@@ -1024,22 +1024,22 @@ function Remove_DesktopShortcut([string]$ShortcutName)
     if ($ShortcutName.Length -gt 0)
     {
         LogMe_AndDisplay 'Removing Desktop Shortcuts Links' $InstallerLogFile
-        $local.shortcutnamewithlnk = $ShortcutName
-        if ( !($ShortcutName -like "*.lnk")) {  $local.shortcutnamewithlnk = $ShortcutName + '.lnk' }
-        #LogMe_AndDisplay 'effective name to match = $local.shortcutnamewithlnk' $InstallerLogFile
+        $shortcutnamewithlnk = $ShortcutName
+        if ( !($ShortcutName -like "*.lnk")) {  $shortcutnamewithlnk = $ShortcutName + '.lnk' }
+        #LogMe_AndDisplay 'effective name to match = $shortcutnamewithlnk' $InstallerLogFile
 
-        $local.testpublicdesktop = $env:PUBLIC + '\Desktop'
-        $local.testuserdesktop =  $env:USERPROFILE + '\Desktop'
+        $testpublicdesktop = $env:PUBLIC + '\Desktop'
+        $testuserdesktop =  $env:USERPROFILE + '\Desktop'
     
-        Get-ChildItem $local.testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object 
+        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object 
         {
             #LogMe_AndDisplay 'Checking $_'  $InstallerLogFile
-            if ($_.Name -eq $local.shortcutnamewithlnk ) 
+            if ($_.Name -eq $shortcutnamewithlnk ) 
             { 
-                $local.log =  '    Removing '+ $_FullName 
-                LogMe_AndDisplay $local.log $InstallerLogFile
-                $local.err = Remove-Item $_.FullName *>&1
-                LogMe_AndDisplay $local.err  $InstallerLogFile
+                $log =  '    Removing '+ $_FullName 
+                LogMe_AndDisplay $log $InstallerLogFile
+                $err = Remove-Item $_.FullName *>&1
+                LogMe_AndDisplay $err  $InstallerLogFile
             }
         }
     
@@ -1048,10 +1048,10 @@ function Remove_DesktopShortcut([string]$ShortcutName)
             #write-host 'checking' $_ '.name=' $_.Name 
             if ($_.Name -eq $shortcutnamewithlnk  ) 
             { 
-                $local.log = '    Removing'+$_.FullName  
-                LogMe_AndDisplay $local.log $InstallerLogFile
-                $local.err = Remove-Item $_.FullName *>&1
-                LogMe_AndDisplay $local.err  $InstallerLogFile
+                $log = '    Removing'+$_.FullName  
+                LogMe_AndDisplay $log $InstallerLogFile
+                $err = Remove-Item $_.FullName *>&1
+                LogMe_AndDisplay $err  $InstallerLogFile
             }
         }
         LogMe_AndDisplay 'Desktop Shortcut Link removals complete.' $InstallerLogFile 
@@ -1069,29 +1069,29 @@ function Remove_StartMenuShortcut([string]$RelativeName)
     if ($RelativeName.Length -gt 0)
     {
         LogMe_AndDisplay 'Removing StartMenu Shortcuts Links' $InstallerLogFile
-        $local.relativenamewithlnk = $RelativeName
-        if ( !($RelativeName -like "*.lnk")) {  $local.relativenamewithlnk = $RelativeName + '.lnk' }
-        LogMe_AndDisplay "    Effective name to match =  $local.relativenamewithlnk " $InstallerLogFile
+        $relativenamewithlnk = $RelativeName
+        if ( !($RelativeName -like "*.lnk")) {  $relativenamewithlnk = $RelativeName + '.lnk' }
+        LogMe_AndDisplay "    Effective name to match =  $relativenamewithlnk " $InstallerLogFile
 
-        $local.testpublicstartmenu = $env:ALLUSERSPROFILE + '\Microsoft\Windows\Start Menu\Programs\' + $local.relativenamewithlnk
-        $local.testuserstartmenu   = $env:APPDATA +  '\Microsoft\Windows\Start Menu\Programs\' + $local.relativenamewithlnk
+        $testpublicstartmenu = $env:ALLUSERSPROFILE + '\Microsoft\Windows\Start Menu\Programs\' + $relativenamewithlnk
+        $testuserstartmenu   = $env:APPDATA +  '\Microsoft\Windows\Start Menu\Programs\' + $relativenamewithlnk
 
-        if (Test-Path -Path $local.testpublicstartmenu ) 
+        if (Test-Path -Path $testpublicstartmenu ) 
         { 
-            $local.log = '    Removing '+ $local.testpublicstartmenu 
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            $local.err = Remove-Item $local.testpublicstartmenu *>&1
-            LogMe_AndDisplay $local.err  $InstallerLogFile
+            $log = '    Removing '+ $testpublicstartmenu 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            $err = Remove-Item $testpublicstartmenu *>&1
+            LogMe_AndDisplay $err  $InstallerLogFile
         }
-        #else { LogMe_AndDisplay "    No such $local.testpublicstartmenu " $InstallerLogFile }
-        if (Test-Path -Path $local.testuserstartmenu ) 
+        #else { LogMe_AndDisplay "    No such $testpublicstartmenu " $InstallerLogFile }
+        if (Test-Path -Path $testuserstartmenu ) 
         { 
-            $local.log = '    Removing '+$local.testuserstartmenu 
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            $local.err = Remove-Item $local.testuserstartmenu *>&1
-            LogMe_AndDisplay $local.err  $InstallerLogFile
+            $log = '    Removing '+$testuserstartmenu 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            $err = Remove-Item $testuserstartmenu *>&1
+            LogMe_AndDisplay $err  $InstallerLogFile
         }
-        #else { LogMe_AndDisplay "    No such $local.testuserstartmenu " $InstallerLogFile }
+        #else { LogMe_AndDisplay "    No such $testuserstartmenu " $InstallerLogFile }
         LogMe_AndDisplay 'StartMenu Shortcut Link removals complete.' $InstallerLogFile
     }
 }
@@ -1106,22 +1106,22 @@ function Remove_StartMenuFolder([string]$FolderName)
     if ($FolderName.Length -gt 0)
     {
         LogMe_AndDisplay 'Removing StartMenu Folders' $InstallerLogFile
-        $local.testpublicstartmenu = $env:ALLUSERSPROFILE + '\Microsoft\Windows\Start Menu\Programs\' + $FolderName
-        $local.testuserstartmenu   = $env:APPDATA +  '\Microsoft\Windows\Start Menu\Programs\' + $FolderName
+        $testpublicstartmenu = $env:ALLUSERSPROFILE + '\Microsoft\Windows\Start Menu\Programs\' + $FolderName
+        $testuserstartmenu   = $env:APPDATA +  '\Microsoft\Windows\Start Menu\Programs\' + $FolderName
 
-        if (Test-Path -Path $local.testpublicstartmenu ) 
+        if (Test-Path -Path $testpublicstartmenu ) 
         { 
-            $local.log = '    Removing '+$local.testpublicstartmenu 
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            $local.err = Remove-Item -Force -Recurse $local.testpublicstartmenu  *>&1
-            LogMe_AndDisplay $local.err  $InstallerLogFile
+            $log = '    Removing '+$testpublicstartmenu 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            $err = Remove-Item -Force -Recurse $testpublicstartmenu  *>&1
+            LogMe_AndDisplay $err  $InstallerLogFile
         }
-        if (Test-Path -Path $local.testuserstartmenu ) 
+        if (Test-Path -Path $testuserstartmenu ) 
         { 
-            $local.log = '    Removing '+$local.testuserstartmenu 
-            LogMe_AndDisplay $local.log $InstallerLogFile
-            $local.err = Remove-Item -Force -Recurse $local.testuserstartmenu  *>&1
-            LogMe_AndDisplay $local.err  $InstallerLogFile
+            $log = '    Removing '+$testuserstartmenu 
+            LogMe_AndDisplay $log $InstallerLogFile
+            $err = Remove-Item -Force -Recurse $testuserstartmenu  *>&1
+            LogMe_AndDisplay $err  $InstallerLogFile
         }
         LogMe_AndDisplay 'StartMenu Folder removals complete.' $InstallerLogFile
     }
@@ -1142,10 +1142,10 @@ function Run_RemoveFiles(
         {
             if ($RemFile.Length -gt 0)
             {
-                $local.log = 'removing ' + $RemFile
-                LogMe_AndDisplay $local.log $InstallerLogFile
-                $local.err = Remove-Item -Force -Recurse $RemFile *>&1
-                LogMe_AndDisplay $local.err  $InstallerLogFile
+                $log = 'removing ' + $RemFile
+                LogMe_AndDisplay $log $InstallerLogFile
+                $err = Remove-Item -Force -Recurse $RemFile *>&1
+                LogMe_AndDisplay $err  $InstallerLogFile
             }
         }
     }
@@ -1155,10 +1155,10 @@ function Run_RemoveFiles(
         {
             if ($RemFile.Length -gt 0)
             {
-                $local.log = 'removing ' + $RemFile
-                LogMe_AndDisplay $local.log $InstallerLogFile
-                $local.err = Remove-Item -Force -Recurse $RemFile *>&1
-                LogMe_AndDisplay $local.err  $InstallerLogFile
+                $log = 'removing ' + $RemFile
+                LogMe_AndDisplay $log $InstallerLogFile
+                $err = Remove-Item -Force -Recurse $RemFile *>&1
+                LogMe_AndDisplay $err  $InstallerLogFile
             }
         }
     }
@@ -1175,45 +1175,45 @@ function Run_RemoveFiles(
 function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
 {
     LogMe_AndDisplay "Starting any Post-Install NGEN scripts." $InstallerLogFile 
-    $local.cnt = 0
+    $cnt = 0
     $psexeNative = Get_PowerShellNativePath
     #---------------------------------------------------------------
     #Look for a .ps1 file to import
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object 
     {
-        $local.xtmp = $_.FullName
-        if ($local.xtmp -like "*x64OSPostInstall_ExtraNgen.ps1" -or $local.xtmp -like "*PostInstall_ExtraNgen_x64.ps1" ) 
+        $xtmp = $_.FullName
+        if ($xtmp -like "*x64OSPostInstall_ExtraNgen.ps1" -or $xtmp -like "*PostInstall_ExtraNgen_x64.ps1" ) 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
-                $local.log = '    running script for x64'+ $local.xtmp
-                LogMe_AndDisplay $local.log $InstallerLogFile 
-                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$local.xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                $log = '    running script for x64'+ $xtmp
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
             }
         }
-        elseif ($local.xtmp -like "*x86OSPostInstall_ExtraNgen.ps1" -or $local.xtmp -like "*PostInstall_ExtraNgen_x86.ps1") 
+        elseif ($xtmp -like "*x86OSPostInstall_ExtraNgen.ps1" -or $xtmp -like "*PostInstall_ExtraNgen_x86.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
-                $local.log = '    running script for x86'+ $local.xtmp 
-                LogMe_AndDisplay $local.log $InstallerLogFile 
-                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$local.xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                $log = '    running script for x86'+ $xtmp 
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
-                $local.cnt = $local.cnt + 1
+                $cnt = $cnt + 1
             }
         }
-        elseif ($local.xtmp -like "*_PostInstall_ExtraNgen.ps1") 
+        elseif ($xtmp -like "*_PostInstall_ExtraNgen.ps1") 
         {
-            $local.log = '    running script'+ $local.xtmp 
-            LogMe_AndDisplay $local.log $InstallerLogFile 
-            Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$local.xtmp`""      -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            $log = '    running script'+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""      -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
-            $local.cnt = $local.cnt + 1
+            $cnt = $cnt + 1
         }
     }
-    if ($local.cnt -eq 0) 
+    if ($cnt -eq 0) 
     { 
         LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
     }
