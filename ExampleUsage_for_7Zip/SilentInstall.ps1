@@ -72,12 +72,13 @@ $executingScriptDirectory = Split-Path -Path $MyInvocation.MyCommand.Definition 
 # Bring in common utility code
 Import-Module $executingScriptDirectory\SilentInstall_Utilities.ps1
 
-Set_PSWinSize 80 48
+Set_PSWinSize 80 48 5 5
 Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $false 
 
 # Ensure we are running elevated
 SilentInstall_EnsureElevated $PSCommandPath
 
+Set_PSWinSIze 48 80 10 10
 Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $true 
 
 Write-host 'Starting - SilentInstall.ps1'
@@ -112,7 +113,7 @@ $FilesToRemove_x86 = "C:\Program Files\7-Zip\Uninstall.exe"
 $DoFlushNgen = $true
 
 # Optional msi debug logging, uncomment the next line. You may need to manually copy the msi log file back out!
-#SilentInstall-EnableMSIDebugging "voicewarmupx"
+#SilentInstall_EnableMSIDebugging "voicewarmupx"
 
 #                   end of PRIMARY CUSTOMIZATION area
 #=================================================================================
