@@ -70,7 +70,7 @@
 # Get folder that this PS1 file is in so that we can find files correctly from relative references
 $executingScriptDirectory = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # Bring in common utility code
-Import-Module $executingScriptDirectory\SilentInstall_Utilities.psm1
+Import-Module $executingScriptDirectory\SilentInstall_Utilities.ps1
 
 Set_PSWinSize 80 48 5 5
 Set_PSWinColors 'Black' 'White' 'PowerShell - SilentInstall.ps1' $false 
