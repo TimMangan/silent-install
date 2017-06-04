@@ -1,5 +1,5 @@
 #######################################################################################################################
-#  SilentInstall_Utilities.psm1
+#  SilentInstall_Utilities.ps1
 #
 #  Attributions: 
 #       Original code from TMurgent Technologies, LLP
@@ -9,6 +9,7 @@
 # 
 #
 #  To use:
+#     Import-Module {pathto\}SilentInstall_Utilities.ps1
 #     Call SilentInstall_EnsureElevated
 #     (Optional) Call Set_PSWinSize
 #     (Optional) Call Set_PSWinColors
@@ -41,9 +42,6 @@ $InstallerLogFile   = "logfile.log"
 
 #--------------------------------------------------------------------------------------------------
 
-#internally used
-###$psexeX86 = ""
-$pspsexeNative = ""
 
 #######################################################################################################################
 <#
@@ -585,51 +583,6 @@ Function New_Shortcut
 } 
 
 
-
-
-#######################################################################################################################
-<#
-.SYNOPSIS
-Flush_NGensQueues
-Function to flush the various ngen queues.
-
-.DESCRIPTION
-Many installers of .NET apps set up to perform .net compilation optimization in the background in an ngen queue.
-This function will force completion so that you have it in your package.  
-
-    NOTE: You should ensure that this has been done to your base image before the snapshot so that 
-    you don't pick up other stuff!
-
-.PARAMETER InstallerLogFile
-Full path to a log file to generate/append to.
-
-#>
-Function Flush_NGensQueues
-{
-  [CmdletBinding()] 
-  param( 
-    [Parameter(Mandatory=$True, Position=0)]  
-    [string]$InstallerLogFile
-  )
-  Process 
-  {
-
-    [string[]]$NgenPotentials =  "C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework\v4.0.30319\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe"
-    
-    LogMe_AndDisplay "Flushing NGen Queues" $InstallerLogFile 
-    foreach ($ng in $NgenPotentials)
-    {
-        if(Test-Path $ng )
-        {
-            $log =  "    Flushing queue with"+$ng
-            LogMe_AndDisplay $log $InstallerLogFile 
-            Start-Process -Filepath $ng executeQueuedItems  -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
-            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile
-        }
-    }
-    LogMe_AndDisplay "NGen queue flusing complete." $InstallerLogFile
-  } 
-}
 
 
 
@@ -1263,6 +1216,53 @@ function Make_KeyIfNotPresent([string]$HKwhich, [string]$rkey ) {
         New-Item -Path "$($HKwhich):\$($rkey)" -Force
     }
 }
+
+
+
+#######################################################################################################################
+<#
+.SYNOPSIS
+Flush_NGensQueues
+Function to flush the various ngen queues.
+
+.DESCRIPTION
+Many installers of .NET apps set up to perform .net compilation optimization in the background in an ngen queue.
+This function will force completion so that you have it in your package.  
+
+    NOTE: You should ensure that this has been done to your base image before the snapshot so that 
+    you don't pick up other stuff!
+
+.PARAMETER InstallerLogFile
+Full path to a log file to generate/append to.
+
+#>
+Function Flush_NGensQueues
+{
+  [CmdletBinding()] 
+  param( 
+    [Parameter(Mandatory=$True, Position=0)]  
+    [string]$InstallerLogFile
+  )
+  Process 
+  {
+
+    [string[]]$NgenPotentials =  "C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework\v4.0.30319\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe"
+    
+    LogMe_AndDisplay "Flushing NGen Queues" $InstallerLogFile 
+    foreach ($ng in $NgenPotentials)
+    {
+        if(Test-Path $ng )
+        {
+            $log =  "    Flushing queue with"+$ng
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -Filepath $ng executeQueuedItems  -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile
+        }
+    }
+    LogMe_AndDisplay "NGen queue flusing complete." $InstallerLogFile
+  } 
+}
+
 
 ###################################################################################################
 # Function to log something to the end of the named text-based log file.
