@@ -19,6 +19,7 @@
 #     Perform additional customizations supported by this module, including but not limited to
 #                 (optional) Move_Key 
 #                 (optional) New_Shortcut  
+#                 (optional) SilentInstall_FixShortcutToCmdBat
 #                 (optional) SilentInstall_SaveLogFile 
 #     (optional) Call SilentInstall_FlushNGensQueues 
 #######################################################################################################################
@@ -581,6 +582,57 @@ Function New_Shortcut
     } 
   } 
 } 
+
+
+
+#######################################################################################################################
+<#
+.SYNOPSIS
+SilentInstall_FixShortcutToCmdBat
+Modified a .lnk file with target of Bat or CMD to point to cmd.exe with /c to file.
+
+.DESCRIPTION
+Some instllers add shortcuts to BAT or CMD files, and these don't work in App-V.  This function will
+modify the shortcut to call cmd.exe /c BatOrCmdFile and any additional arguments (normally none). 
+
+.PARAMETER LinkPath
+The fully qualified path to the .lnk file to adjust.
+
+.PARAMETER InstallerLogFile
+Full path to a log file to generate/append to.
+
+#>
+function SilentInstall_FixShortcutToCmdBat {
+  [CmdletBinding()] 
+  param( 
+    [Parameter(Mandatory=$True, Position=0)]
+    [string] $LinkPath = $null,
+    [Parameter(Mandatory=$True, Position=1)]  
+    [string]$InstallerLogFile
+  )
+  Process
+  {
+      LogMe_AndDisplay "Editing Shortcut: $LinkPath" $InstallerLogFile 
+    $obj = New-Object -ComObject WScript.Shell
+    $link = $obj.CreateShortcut($LinkPath)
+    if ($link) 
+    {
+        $tmp = "Oringial Shortcut found with target " + $link.TargetPath + " and Arguments " + $link.Arguments
+        LogMe_AndDisplay "$tmp" $InstallerLogFile 
+        $link.WorkingDirectory = ($link.TargetPath).Replace("\"+(Split-Path ($link.TargetPath) -Leaf),"")
+        $link.Arguments = "-c '" + $link.TargetPath + "' " + $link.Arguments
+        $link.TargetPath = 'C:\Windows\System32\cmd.exe'
+        $link.Save()
+        $tmp = "Saved new shortcut with target " + $link.TargetPath + " and Arguments " + $link.Arguments
+        LogMe_AndDisplay "$tmp" $InstallerLogFile 
+    }
+    else
+    {
+        LogMe_AndDisplay "Failed to find shortcut file."  $InstallerLogFile 
+    }
+  }
+}
+
 
 
 
