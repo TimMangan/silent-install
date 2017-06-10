@@ -158,6 +158,7 @@ This includes:
     CopyFile hashes  (from variables)
     Reg files discovered the primary install folder
     Application_Capabilies scripts discovered in the primary install folder
+    ShortcutFixes scripts discovered in the primary install folder
     Shortcut removals (from variables)
     File Removals (from variables)
     NGen scripts discovered in the primary install folder.
@@ -200,6 +201,12 @@ Function SilentInstall_PrimaryInstallations
     #--------------------------------------------------------------
     # Run located Generate_AppCapabilities files (if any)
     Run_AppCapabilitiesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+
+    #--------------------------------------------------------------
+    # Run located Generate_ShortcutFixes files (if any)
+    Run_ShortcutFixesFiles $executingScriptDirectory  
     #---------------------------------------------------------------
 
     #---------------------------------------------------------------
@@ -637,8 +644,6 @@ function SilentInstall_FixShortcutToCmdBat {
 
 
 
-
-
 #######################################################################################################################
 <#
 .SYNOPSIS
@@ -906,8 +911,16 @@ function Run_CopyFiles(
     {
         $log = 'Adding '+$CopyFileHash.Key+' to folder '+$CopyFileHash.Value 
         LogMe_AndDisplay $log $InstallerLogFile
+
+        if (!(Test-Path $CopyFileHash.Value))
+        {
+            $err1 = new-item -ItemType Directory -Force $CopyFileHash.Value
+            $serr1 = "Create Directory "+$CopyFileHash.Value+": "+$err1
+            LogMe_AndDisplay $serr1 $InstallerLogFile
+        } 
         $err = Copy-Item  $CopyFileHash.Key -Destination $CopyFileHash.Value *>&1
-        LogMe_AndDisplay $err  $InstallerLogFile 
+        $serr = "Copy file result: "+$err 
+        LogMe_AndDisplay $serr  $InstallerLogFile 
     }
     LogMe_AndDisplay "CopyFiles Completed." $InstallerLogFile 
 }
@@ -925,7 +938,7 @@ function Run_RegFiles([string]$executingScriptDirectory)
     $cnt = 0
     #---------------------------------------------------------------
     #Look for a .reg file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object  {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object {
         if ($_.FullName -like "*x64.reg") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
@@ -978,7 +991,7 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
     $psexeNative = Get_PowerShellNativePath
     #---------------------------------------------------------------
     #Look for a .ps1 file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object  {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
         if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1") 
         {
@@ -1020,6 +1033,64 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
 
 
 
+
+###################################################################################################
+# Function to find/run Post-Install Shortcut Fixus script files
+#    This will find all ps1 files with names matchine "*Generate_ShortcutFixes" in the given 
+#    folder.
+#    Those whose base names end in x86 or x64 will only be run on the same bitness as the OS,
+#    All others will just be run.
+#    No control over the order of running is provided.
+function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
+{
+
+    LogMe_AndDisplay "Starting any Post-Install Shortcut Fixup scripts." $InstallerLogFile 
+    $cnt = 0
+    $psexeNative = Get_PowerShellNativePath
+    #---------------------------------------------------------------
+    #Look for a .ps1 file to import
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
+        $xtmp = $_.FullName
+        if ($_.FullName -like "*Generate_ShortcutFixes_x64.ps1") 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $true) 
+            {
+                $log = '    running script for x64 '+ $xtmp
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_ShortcutFixes_x86.ps1") 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $false) 
+            {
+                $log = '    running script for x86 '+ $xtmp 
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_ShortcutFixes.ps1") 
+        {
+            $log = '    running script '+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+            $cnt = $cnt + 1
+        }
+    }
+    if ($cnt -eq 0) 
+    { 
+        LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
+    }
+    LogMe_AndDisplay "Post-Install Shortcut Fixess scripts complete." $InstallerLogFile  
+}
+
+
+
 ###################################################################################################
 # Function to remove a desktop shortcut link file, if present
 # Input is just the name of the shortcut, with or without the .lnk extension.
@@ -1035,7 +1106,7 @@ function Remove_DesktopShortcut([string]$ShortcutName)
         $testpublicdesktop = $env:PUBLIC + '\Desktop'
         $testuserdesktop =  $env:USERPROFILE + '\Desktop'
     
-        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object  {
+        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
             #LogMe_AndDisplay 'Checking $_'  $InstallerLogFile
             if ($_.Name -eq $shortcutnamewithlnk ) 
             { 
@@ -1046,7 +1117,7 @@ function Remove_DesktopShortcut([string]$ShortcutName)
             }
         }
     
-        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object  {
+        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
             #write-host 'checking' $_ '.name=' $_.Name 
             if ($_.Name -eq $shortcutnamewithlnk  ) 
             { 
