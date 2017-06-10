@@ -619,9 +619,10 @@ function SilentInstall_FixShortcutToCmdBat {
     {
         $tmp = "Oringial Shortcut found with target " + $link.TargetPath + " and Arguments " + $link.Arguments
         LogMe_AndDisplay "$tmp" $InstallerLogFile 
-        $link.WorkingDirectory = ($link.TargetPath).Replace("\"+(Split-Path ($link.TargetPath) -Leaf),"")
+        $wdir = ($link.TargetPath).Replace("\"+(Split-Path ($link.TargetPath) -Leaf),"")
         $link.Arguments = "-c '" + $link.TargetPath + "' " + $link.Arguments
         $link.TargetPath = 'C:\Windows\System32\cmd.exe'
+        $link.WorkingDirectory = $wdir
         $link.Save()
         $tmp = "Saved new shortcut with target " + $link.TargetPath + " and Arguments " + $link.Arguments
         LogMe_AndDisplay "$tmp" $InstallerLogFile 
