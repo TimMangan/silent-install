@@ -158,6 +158,7 @@ This includes:
     CopyFile hashes  (from variables)
     Reg files discovered the primary install folder
     Application_Capabilies scripts discovered in the primary install folder
+    AppPathFixes scripts discovered in the primary install folder
     ShortcutFixes scripts discovered in the primary install folder
     Shortcut removals (from variables)
     File Removals (from variables)
@@ -201,6 +202,12 @@ Function SilentInstall_PrimaryInstallations
     #--------------------------------------------------------------
     # Run located Generate_AppCapabilities files (if any)
     Run_AppCapabilitiesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+
+    #--------------------------------------------------------------
+    # Run located Generate_AppPathFixes files (if any)
+    Run_AppPathFixesFiles $executingScriptDirectory  
     #---------------------------------------------------------------
 
 
@@ -993,7 +1000,8 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
     #Look for a .ps1 file to import
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
-        if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1") 
+        if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1" -or
+            $_.FullName -like "*x64*Generate_AppCapabilities.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
@@ -1004,7 +1012,8 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
                 $cnt = $cnt + 1
             }
         }
-        elseif ($_.FullName -like "*Generate_AppCapabilities_x86.ps1") 
+        elseif ($_.FullName -like "*Generate_AppCapabilities_x86.ps1" -or
+                $_.FullName -like "*x86*Generate_AppCapabilities.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
@@ -1033,6 +1042,65 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
 
 
 
+###################################################################################################
+# Function to find/run Post-Install Application AppPathFixes script files
+#    This will find all ps1 files with names matchine "*Generate_AppCapabilities*" in the given 
+#    folder.
+#    Those whose base names end in x86 or x64 will only be run on the same bitness as the OS,
+#    All others will just be run.
+#    No control over the order of running is provided.
+function Run_AppPathFixesFiles([string]$executingScriptDirectory)
+{
+
+    LogMe_AndDisplay "Starting any Post-Install App Path Fixes scripts." $InstallerLogFile 
+    $cnt = 0
+    $psexeNative = Get_PowerShellNativePath
+    #---------------------------------------------------------------
+    #Look for a .ps1 file to import
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
+        $xtmp = $_.FullName
+        if ($_.FullName -like "*Generate_AppPathFixes_x64.ps1" -or
+            $_.FullName -like "*x64*Generate_AppPathFixes.ps1" ) 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $true) 
+            {
+                $log = '    running script for x64 '+ $xtmp
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_AppPathFixes_x86.ps1" -or
+                $_.FullName -like "*x86*Generate_AppPathFixes.ps1") 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $false) 
+            {
+                $log = '    running script for x86 '+ $xtmp 
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_AppPathFixes.ps1") 
+        {
+            $log = '    running script '+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+            $cnt = $cnt + 1
+        }
+    }
+    if ($cnt -eq 0) 
+    { 
+        LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
+    }
+    LogMe_AndDisplay "Post-Install App Path Fixes scripts complete." $InstallerLogFile  
+}
+
+
+
 
 ###################################################################################################
 # Function to find/run Post-Install Shortcut Fixus script files
@@ -1051,7 +1119,8 @@ function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
     #Look for a .ps1 file to import
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
-        if ($_.FullName -like "*Generate_ShortcutFixes_x64.ps1") 
+        if ($_.FullName -like "*Generate_ShortcutFixes_x64.ps1" -or
+            $_.FullName -like "*x64*Generate_ShortcutFixes.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
@@ -1062,7 +1131,8 @@ function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
                 $cnt = $cnt + 1
             }
         }
-        elseif ($_.FullName -like "*Generate_ShortcutFixes_x86.ps1") 
+        elseif ($_.FullName -like "*Generate_ShortcutFixes_x86.ps1" -or
+                $_.FullName -like "*x86*Generate_ShortcutFixes.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
