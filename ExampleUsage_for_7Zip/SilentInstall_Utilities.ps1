@@ -1,5 +1,5 @@
 #######################################################################################################################
-#  SilentInstall_Utilities.psm1
+#  SilentInstall_Utilities.ps1
 #
 #  Attributions: 
 #       Original code from TMurgent Technologies, LLP
@@ -9,6 +9,7 @@
 # 
 #
 #  To use:
+#     Import-Module {pathto\}SilentInstall_Utilities.ps1
 #     Call SilentInstall_EnsureElevated
 #     (Optional) Call Set_PSWinSize
 #     (Optional) Call Set_PSWinColors
@@ -18,6 +19,7 @@
 #     Perform additional customizations supported by this module, including but not limited to
 #                 (optional) Move_Key 
 #                 (optional) New_Shortcut  
+#                 (optional) SilentInstall_FixShortcutToCmdBat
 #                 (optional) SilentInstall_SaveLogFile 
 #     (optional) Call SilentInstall_FlushNGensQueues 
 #######################################################################################################################
@@ -41,9 +43,6 @@ $InstallerLogFile   = "logfile.log"
 
 #--------------------------------------------------------------------------------------------------
 
-#internally used
-###$psexeX86 = ""
-$pspsexeNative = ""
 
 #######################################################################################################################
 <#
@@ -159,6 +158,8 @@ This includes:
     CopyFile hashes  (from variables)
     Reg files discovered the primary install folder
     Application_Capabilies scripts discovered in the primary install folder
+    AppPathFixes scripts discovered in the primary install folder
+    ShortcutFixes scripts discovered in the primary install folder
     Shortcut removals (from variables)
     File Removals (from variables)
     NGen scripts discovered in the primary install folder.
@@ -201,6 +202,18 @@ Function SilentInstall_PrimaryInstallations
     #--------------------------------------------------------------
     # Run located Generate_AppCapabilities files (if any)
     Run_AppCapabilitiesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+
+    #--------------------------------------------------------------
+    # Run located Generate_AppPathFixes files (if any)
+    Run_AppPathFixesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+
+    #--------------------------------------------------------------
+    # Run located Generate_ShortcutFixes files (if any)
+    Run_ShortcutFixesFiles $executingScriptDirectory  
     #---------------------------------------------------------------
 
     #---------------------------------------------------------------
@@ -586,50 +599,55 @@ Function New_Shortcut
 
 
 
-
 #######################################################################################################################
 <#
 .SYNOPSIS
-Flush_NGensQueues
-Function to flush the various ngen queues.
+SilentInstall_FixShortcutToCmdBat
+Modified a .lnk file with target of Bat or CMD to point to cmd.exe with /c to file.
 
 .DESCRIPTION
-Many installers of .NET apps set up to perform .net compilation optimization in the background in an ngen queue.
-This function will force completion so that you have it in your package.  
+Some instllers add shortcuts to BAT or CMD files, and these don't work in App-V.  This function will
+modify the shortcut to call cmd.exe /c BatOrCmdFile and any additional arguments (normally none). 
 
-    NOTE: You should ensure that this has been done to your base image before the snapshot so that 
-    you don't pick up other stuff!
+.PARAMETER LinkPath
+The fully qualified path to the .lnk file to adjust.
 
 .PARAMETER InstallerLogFile
 Full path to a log file to generate/append to.
 
 #>
-Function Flush_NGensQueues
-{
+function SilentInstall_FixShortcutToCmdBat {
   [CmdletBinding()] 
   param( 
-    [Parameter(Mandatory=$True, Position=0)]  
+    [Parameter(Mandatory=$True, Position=0)]
+    [string] $LinkPath = $null,
+    [Parameter(Mandatory=$True, Position=1)]  
     [string]$InstallerLogFile
   )
-  Process 
+  Process
   {
-
-    [string[]]$NgenPotentials =  "C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework\v4.0.30319\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe"
-    
-    LogMe_AndDisplay "Flushing NGen Queues" $InstallerLogFile 
-    foreach ($ng in $NgenPotentials)
+      LogMe_AndDisplay "Editing Shortcut: $LinkPath" $InstallerLogFile 
+    $obj = New-Object -ComObject WScript.Shell
+    $link = $obj.CreateShortcut($LinkPath)
+    if ($link) 
     {
-        if(Test-Path $ng )
-        {
-            $log =  "    Flushing queue with"+$ng
-            LogMe_AndDisplay $log $InstallerLogFile 
-            Start-Process -Filepath $ng executeQueuedItems  -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
-            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile
-        }
+        $tmp = "Oringial Shortcut found with target " + $link.TargetPath + " and Arguments " + $link.Arguments
+        LogMe_AndDisplay "$tmp" $InstallerLogFile 
+        $wdir = ($link.TargetPath).Replace("\"+(Split-Path ($link.TargetPath) -Leaf),"")
+        $link.Arguments = "-c '" + $link.TargetPath + "' " + $link.Arguments
+        $link.TargetPath = 'C:\Windows\System32\cmd.exe'
+        $link.WorkingDirectory = $wdir
+        $link.Save()
+        $tmp = "Saved new shortcut with target " + $link.TargetPath + " and Arguments " + $link.Arguments
+        LogMe_AndDisplay "$tmp" $InstallerLogFile 
     }
-    LogMe_AndDisplay "NGen queue flusing complete." $InstallerLogFile
-  } 
+    else
+    {
+        LogMe_AndDisplay "Failed to find shortcut file."  $InstallerLogFile 
+    }
+  }
 }
+
 
 
 
@@ -900,8 +918,16 @@ function Run_CopyFiles(
     {
         $log = 'Adding '+$CopyFileHash.Key+' to folder '+$CopyFileHash.Value 
         LogMe_AndDisplay $log $InstallerLogFile
+
+        if (!(Test-Path $CopyFileHash.Value))
+        {
+            $err1 = new-item -ItemType Directory -Force $CopyFileHash.Value
+            $serr1 = "Create Directory "+$CopyFileHash.Value+": "+$err1
+            LogMe_AndDisplay $serr1 $InstallerLogFile
+        } 
         $err = Copy-Item  $CopyFileHash.Key -Destination $CopyFileHash.Value *>&1
-        LogMe_AndDisplay $err  $InstallerLogFile 
+        $serr = "Copy file result: "+$err 
+        LogMe_AndDisplay $serr  $InstallerLogFile 
     }
     LogMe_AndDisplay "CopyFiles Completed." $InstallerLogFile 
 }
@@ -919,7 +945,7 @@ function Run_RegFiles([string]$executingScriptDirectory)
     $cnt = 0
     #---------------------------------------------------------------
     #Look for a .reg file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object  {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension -eq '.reg' } | ForEach-Object {
         if ($_.FullName -like "*x64.reg") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
@@ -972,9 +998,10 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
     $psexeNative = Get_PowerShellNativePath
     #---------------------------------------------------------------
     #Look for a .ps1 file to import
-    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object  {
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
-        if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1") 
+        if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1" -or
+            $_.FullName -like "*x64*Generate_AppCapabilities.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
@@ -985,7 +1012,8 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
                 $cnt = $cnt + 1
             }
         }
-        elseif ($_.FullName -like "*Generate_AppCapabilities_x86.ps1") 
+        elseif ($_.FullName -like "*Generate_AppCapabilities_x86.ps1" -or
+                $_.FullName -like "*x86*Generate_AppCapabilities.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
@@ -1015,6 +1043,125 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
 
 
 ###################################################################################################
+# Function to find/run Post-Install Application AppPathFixes script files
+#    This will find all ps1 files with names matchine "*Generate_AppCapabilities*" in the given 
+#    folder.
+#    Those whose base names end in x86 or x64 will only be run on the same bitness as the OS,
+#    All others will just be run.
+#    No control over the order of running is provided.
+function Run_AppPathFixesFiles([string]$executingScriptDirectory)
+{
+
+    LogMe_AndDisplay "Starting any Post-Install App Path Fixes scripts." $InstallerLogFile 
+    $cnt = 0
+    $psexeNative = Get_PowerShellNativePath
+    #---------------------------------------------------------------
+    #Look for a .ps1 file to import
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
+        $xtmp = $_.FullName
+        if ($_.FullName -like "*Generate_AppPathFixes_x64.ps1" -or
+            $_.FullName -like "*x64*Generate_AppPathFixes.ps1" ) 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $true) 
+            {
+                $log = '    running script for x64 '+ $xtmp
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_AppPathFixes_x86.ps1" -or
+                $_.FullName -like "*x86*Generate_AppPathFixes.ps1") 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $false) 
+            {
+                $log = '    running script for x86 '+ $xtmp 
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_AppPathFixes.ps1") 
+        {
+            $log = '    running script '+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+            $cnt = $cnt + 1
+        }
+    }
+    if ($cnt -eq 0) 
+    { 
+        LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
+    }
+    LogMe_AndDisplay "Post-Install App Path Fixes scripts complete." $InstallerLogFile  
+}
+
+
+
+
+###################################################################################################
+# Function to find/run Post-Install Shortcut Fixus script files
+#    This will find all ps1 files with names matchine "*Generate_ShortcutFixes" in the given 
+#    folder.
+#    Those whose base names end in x86 or x64 will only be run on the same bitness as the OS,
+#    All others will just be run.
+#    No control over the order of running is provided.
+function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
+{
+
+    LogMe_AndDisplay "Starting any Post-Install Shortcut Fixup scripts." $InstallerLogFile 
+    $cnt = 0
+    $psexeNative = Get_PowerShellNativePath
+    #---------------------------------------------------------------
+    #Look for a .ps1 file to import
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
+        $xtmp = $_.FullName
+        if ($_.FullName -like "*Generate_ShortcutFixes_x64.ps1" -or
+            $_.FullName -like "*x64*Generate_ShortcutFixes.ps1") 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $true) 
+            {
+                $log = '    running script for x64 '+ $xtmp
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_ShortcutFixes_x86.ps1" -or
+                $_.FullName -like "*x86*Generate_ShortcutFixes.ps1") 
+        {
+            if ([Environment]::Is64BitOperatingSystem -eq $false) 
+            {
+                $log = '    running script for x86 '+ $xtmp 
+                LogMe_AndDisplay $log $InstallerLogFile 
+                Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+                $cnt = $cnt + 1
+            }
+        }
+        elseif ($_.FullName -like "*Generate_ShortcutFixes.ps1") 
+        {
+            $log = '    running script '+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""   -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile 
+            $cnt = $cnt + 1
+        }
+    }
+    if ($cnt -eq 0) 
+    { 
+        LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
+    }
+    LogMe_AndDisplay "Post-Install Shortcut Fixess scripts complete." $InstallerLogFile  
+}
+
+
+
+###################################################################################################
 # Function to remove a desktop shortcut link file, if present
 # Input is just the name of the shortcut, with or without the .lnk extension.
 function Remove_DesktopShortcut([string]$ShortcutName)
@@ -1029,7 +1176,7 @@ function Remove_DesktopShortcut([string]$ShortcutName)
         $testpublicdesktop = $env:PUBLIC + '\Desktop'
         $testuserdesktop =  $env:USERPROFILE + '\Desktop'
     
-        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object  {
+        Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
             #LogMe_AndDisplay 'Checking $_'  $InstallerLogFile
             if ($_.Name -eq $shortcutnamewithlnk ) 
             { 
@@ -1040,7 +1187,7 @@ function Remove_DesktopShortcut([string]$ShortcutName)
             }
         }
     
-        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object  {
+        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
             #write-host 'checking' $_ '.name=' $_.Name 
             if ($_.Name -eq $shortcutnamewithlnk  ) 
             { 
@@ -1263,6 +1410,53 @@ function Make_KeyIfNotPresent([string]$HKwhich, [string]$rkey ) {
         New-Item -Path "$($HKwhich):\$($rkey)" -Force
     }
 }
+
+
+
+#######################################################################################################################
+<#
+.SYNOPSIS
+Flush_NGensQueues
+Function to flush the various ngen queues.
+
+.DESCRIPTION
+Many installers of .NET apps set up to perform .net compilation optimization in the background in an ngen queue.
+This function will force completion so that you have it in your package.  
+
+    NOTE: You should ensure that this has been done to your base image before the snapshot so that 
+    you don't pick up other stuff!
+
+.PARAMETER InstallerLogFile
+Full path to a log file to generate/append to.
+
+#>
+Function Flush_NGensQueues
+{
+  [CmdletBinding()] 
+  param( 
+    [Parameter(Mandatory=$True, Position=0)]  
+    [string]$InstallerLogFile
+  )
+  Process 
+  {
+
+    [string[]]$NgenPotentials =  "C:\Windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework\v4.0.30319\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe","C:\Windows\Microsoft.NET\Framework64\v4.0.30319\ngen.exe"
+    
+    LogMe_AndDisplay "Flushing NGen Queues" $InstallerLogFile 
+    foreach ($ng in $NgenPotentials)
+    {
+        if(Test-Path $ng )
+        {
+            $log =  "    Flushing queue with"+$ng
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -Filepath $ng executeQueuedItems  -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile
+        }
+    }
+    LogMe_AndDisplay "NGen queue flusing complete." $InstallerLogFile
+  } 
+}
+
 
 ###################################################################################################
 # Function to log something to the end of the named text-based log file.
