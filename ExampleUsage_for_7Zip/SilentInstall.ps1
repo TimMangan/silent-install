@@ -13,6 +13,7 @@
 #         Vendor installer files
 #         .Reg files for import after installs are completed.
 #         Generate_AppCapabilities*.ps1 files.
+#         ShortcutFixes*.ps1 files
 #         PostInstall_ExtraNgen.ps1 files.
 #         Any other files you need to explicitly work with.
 #
@@ -44,6 +45,12 @@
 #            Array of zero or more strings, each is the relative path+name of a folder on the StartMenu to be removed. 
 #            Both the AllUsers and Current users start menus will be checked, after all installers have completed.
 #            The relative path+name should be what follows after "...\Start Menu\Programs\"
+#      $FilesToRemove_x86:
+#      $FiesToRemove_x64:
+#            Entries are a comma seperated list of file paths (both directories and files may be listed for removal)
+#      $EnvsToRemove_x86:
+#      $EnvsToRemove_x64:
+#            Entries are a comma seperated list of environment variable names, without the leading $
 #      $DoFlushNgen:
 #            When set to $true, forces completion of NGEN compilation for .Net apps that might still be in the queue at the end of all installations.
 #            You may set to false if not needed.
@@ -110,6 +117,9 @@ $StartMenuShortcutsToRemove = '7-Zip\7-Zip Help'
 $FilesToRemove_x64 = "C:\Program Files\7-Zip\Uninstall.exe"
 $FilesToRemove_x86 = "C:\Program Files\7-Zip\Uninstall.exe"
 
+$EnvsToRemove_x64 = "'ONEDRIVE'"
+$EnvsToRemove_x86 = "'ONEDRIVE'"
+
 $DoFlushNgen = $true
 
 # Optional msi debug logging, uncomment the next line. You may need to manually copy the msi log file back out!
@@ -140,11 +150,11 @@ SilentInstall_PrimaryInstallations
 #  MAKE ADDITIONAL CUSTOMIZATIONS NOT SUPPORTED BY TOOLING AS NEEDED HERE
 #if ([Environment]::Is64BitOperatingSystem -eq $true ) 
 #{
-#    New-Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
+#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
 #}
 #else
 #{
-#    New-Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files (x86)\installfolder\app.exe"
+#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Windows\Systemre\cmd.exe" -Arguments "/k" -WorkDir "c:\Python36" -Icon "C:\Python36\python.exe"
 #}
 #                   end of ADDITIONAL CUSTOMIZATION AREA
 #========================================================================
@@ -163,5 +173,7 @@ write-host -ForegroundColor "Green"  "Done."
 Start-Sleep 5
 #                    end
 #---------------------------------------------------------------
+
+
 
 

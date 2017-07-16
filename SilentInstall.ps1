@@ -13,6 +13,7 @@
 #         Vendor installer files
 #         .Reg files for import after installs are completed.
 #         Generate_AppCapabilities*.ps1 files.
+#         ShortcutFixes*.ps1 files
 #         PostInstall_ExtraNgen.ps1 files.
 #         Any other files you need to explicitly work with.
 #
@@ -44,6 +45,12 @@
 #            Array of zero or more strings, each is the relative path+name of a folder on the StartMenu to be removed. 
 #            Both the AllUsers and Current users start menus will be checked, after all installers have completed.
 #            The relative path+name should be what follows after "...\Start Menu\Programs\"
+#      $FilesToRemove_x86:
+#      $FiesToRemove_x64:
+#            Entries are a comma seperated list of file paths (both directories and files may be listed for removal)
+#      $EnvsToRemove_x86:
+#      $EnvsToRemove_x64:
+#            Entries are a comma seperated list of environment variable names, without the leading $
 #      $DoFlushNgen:
 #            When set to $true, forces completion of NGEN compilation for .Net apps that might still be in the queue at the end of all installations.
 #            You may set to false if not needed.
@@ -76,7 +83,7 @@ Set_PSWinSize 80 48 5 5
 Set_PSWinColors 'Black' 'White' 'PowerShell - SilentInstall.ps1' $false 
 
 # Ensure we are running elevated
-SilentInstall-EnsureElevated $PSCommandPath
+SilentInstall_EnsureElevated $PSCommandPath
 
 Set_PSWinSize 80 48 10 10
 Set_PSWinColors 'DarkGray' 'White' 'PowerShell - SilentInstall.ps1' $true 
@@ -108,6 +115,9 @@ $InstallerLogFile = $InstallerLogFolder+'\Log_xxx.txt'
 
 #$FilesToRemove_x64 = "'C:\Program Files (x86)\Folder\uninstall.exe', 'C:\Windows\Installers\foo.msi'"
 #$FilesToRemove_x86 = "'C:\Program Files\Folder\uninstall.exe', 'C:\Windows\Installers\foo.msi'"
+
+#$EnvsToRemove_x64 = "'ONEDRIVE', 'SOMETHINGELSE'"
+#$EnvsToRemove_x86 = "'ONEDRIVE'"
 
 $DoFlushNgen = $true
 
@@ -143,7 +153,7 @@ SilentInstall_PrimaryInstallations
 #}
 #else
 #{
-#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files (x86)\installfolder\app.exe"
+#    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Windows\Systemre\cmd.exe" -Arguments "/k" -WorkDir "c:\Python36" -Icon "C:\Python36\python.exe"
 #}
 #                   end of ADDITIONAL CUSTOMIZATION AREA
 #========================================================================
