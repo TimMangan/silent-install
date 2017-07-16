@@ -38,6 +38,8 @@ $CopyFiles_x86Hash = new-object System.Collections.Specialized.OrderedDictionary
 [string[]] $StartMenuFoldersToRemove = ""
 [string[]] $FilesToRemove_x64 = ""
 [string[]] $FilesToRemove_x86 = ""
+[string[]] $EnvsToRemove_x64 = ""
+[string[]] $EnvsToRemove_x86 = ""
 $InstallerLogFolder = "c:\Users\Public\Documents\SequencedPackage"
 $InstallerLogFile   = "logfile.log"
 
@@ -162,6 +164,7 @@ This includes:
     ShortcutFixes scripts discovered in the primary install folder
     Shortcut removals (from variables)
     File Removals (from variables)
+    Environment Variable Removals (from variables)
     NGen scripts discovered in the primary install folder.
 
 .PARAMETER
@@ -235,6 +238,12 @@ Function SilentInstall_PrimaryInstallations
     #-------------------------------------------------------------
     # Remove listed files
     Run_RemoveFiles $FilesToRemove_x64 $FilesToRemove_x86
+    #------------------------------------------------------------
+
+
+    #-------------------------------------------------------------
+    # Remove listed Environment Variables
+    Run_RemoveEnvs $EnvsToRemove_x64 $EnvsToRemove_x86
     #------------------------------------------------------------
 
     #------------------------------------------------------------
@@ -1001,7 +1010,7 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
         if ($_.FullName -like "*Generate_AppCapabilities_x64.ps1" -or
-            $_.FullName -like "*x64*Generate_AppCapabilities.ps1") 
+            $_.FullName -like "*x64OSGenerate_AppCapabilities.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
@@ -1013,7 +1022,7 @@ function Run_AppCapabilitiesFiles([string]$executingScriptDirectory)
             }
         }
         elseif ($_.FullName -like "*Generate_AppCapabilities_x86.ps1" -or
-                $_.FullName -like "*x86*Generate_AppCapabilities.ps1") 
+                $_.FullName -like "*x86OSGenerate_AppCapabilities.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
@@ -1060,7 +1069,7 @@ function Run_AppPathFixesFiles([string]$executingScriptDirectory)
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
         if ($_.FullName -like "*Generate_AppPathFixes_x64.ps1" -or
-            $_.FullName -like "*x64*Generate_AppPathFixes.ps1" ) 
+            $_.FullName -like "*x64OSGenerate_AppPathFixes.ps1" ) 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
@@ -1072,7 +1081,7 @@ function Run_AppPathFixesFiles([string]$executingScriptDirectory)
             }
         }
         elseif ($_.FullName -like "*Generate_AppPathFixes_x86.ps1" -or
-                $_.FullName -like "*x86*Generate_AppPathFixes.ps1") 
+                $_.FullName -like "*x86OSGenerate_AppPathFixes.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
@@ -1120,7 +1129,7 @@ function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
     Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
         $xtmp = $_.FullName
         if ($_.FullName -like "*Generate_ShortcutFixes_x64.ps1" -or
-            $_.FullName -like "*x64*Generate_ShortcutFixes.ps1") 
+            $_.FullName -like "*x64OSGenerate_ShortcutFixes.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
@@ -1132,7 +1141,7 @@ function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
             }
         }
         elseif ($_.FullName -like "*Generate_ShortcutFixes_x86.ps1" -or
-                $_.FullName -like "*x86*Generate_ShortcutFixes.ps1") 
+                $_.FullName -like "*x86OSGenerate_ShortcutFixes.ps1") 
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
@@ -1308,6 +1317,45 @@ function Run_RemoveFiles(
     LogMe_AndDisplay "RemoveFiles Completed." $InstallerLogFile 
 }
 
+
+
+###################################################################################################
+# Function to remove listed Environment Variables
+function Run_RemoveEnvs(
+                        [string[]]$EnvsToRemove_x64,
+                        [string[]]$EnvsToRemove_x86)
+{
+    LogMe_AndDisplay "Starting RemoveEnvs."  $InstallerLogFile
+    if ([Environment]::Is64BitOperatingSystem -eq $true ) 
+    {
+        foreach ($RemEnv in $EnvsToRemove_x64)
+        {
+            $log = 'removing ' + $RemEnv
+            LogMe_AndDisplay $log $InstallerLogFile
+            $envname = 'env:'+$RemEnv
+            if (test-path -Path $envname)
+            {
+                $err = remove-item -force -path $envname *>&1
+                LogMe_AndDisplay $err  $InstallerLogFile
+            }
+        }
+    }
+    else 
+    {
+        foreach ($RemEnv in $EnvsToRemove_x86)
+        {
+            $log = 'removing ' + $RemEnv
+            LogMe_AndDisplay $log $InstallerLogFile
+            $envname = 'env:'+$RemEnv
+            if (test-path -Path $envname)
+            {
+                $err = remove-item -force -path $envname *>&1
+                LogMe_AndDisplay $err  $InstallerLogFile
+            }
+        }
+    }
+    LogMe_AndDisplay "RemoveEnvs Completed." $InstallerLogFile 
+}
 
 ###################################################################################################
 # Function to find/run Post-Install NGen script files
