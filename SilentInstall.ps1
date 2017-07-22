@@ -124,8 +124,8 @@ $InstallerLogFile = $InstallerLogFolder+'\Log_xxx.txt'
 #$EnvsToRemove_x64 = "'ONEDRIVE', 'SOMETHINGELSE'"
 #$EnvsToRemove_x86 = "'ONEDRIVE'"
 
-#$ServicesToDisable_x64 = "'Service Name'"
-#$ServicesToDisable_x86 = "'Service Name'"
+#$ServicesToDisable_x64 = "Service Name"
+#$ServicesToDisable_x86 = "Service Name"
 
 $DoFlushNgen = $true
 
