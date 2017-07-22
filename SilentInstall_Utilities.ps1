@@ -40,10 +40,129 @@ $CopyFiles_x86Hash = new-object System.Collections.Specialized.OrderedDictionary
 [string[]] $FilesToRemove_x86 = ""
 [string[]] $EnvsToRemove_x64 = ""
 [string[]] $EnvsToRemove_x86 = ""
+[string[]] $ServicesToDisable_x64 = ""
+[string[]] $ServicesToDisable_x86 = ""
 $InstallerLogFolder = "c:\Users\Public\Documents\SequencedPackage"
 $InstallerLogFile   = "logfile.log"
 
 #--------------------------------------------------------------------------------------------------
+
+
+#######################################################################################################################
+<# 
+.SYNOPSIS
+SilentInstall_PrimaryInstallations
+
+erforms primary installations specified by pre-established variables and located files.
+
+.Description
+Utility to perform the primary installation activity.
+This includes:
+    Installers hashes (from variables)
+    CopyFile hashes  (from variables)
+    Reg files discovered the primary install folder
+    Application_Capabilies scripts discovered in the primary install folder
+    AppPathFixes scripts discovered in the primary install folder
+    ShortcutFixes scripts discovered in the primary install folder
+    Shortcut removals (from variables)
+    File Removals (from variables)
+    Environment Variable Removals (from variables)
+    Disable Services
+    NGen scripts discovered in the primary install folder.
+
+.PARAMETER
+None
+
+.EXAMPLE
+SilentInstall_PrimaryInstallations
+
+#>
+Function SilentInstall_PrimaryInstallations
+{
+  [CmdletBinding()]
+  param()
+  Process {
+    #---------------------------------------------------------------
+    # Make sure folder for log file is present
+    if (!(Test-Path -Path $InstallerLogFolder))
+    {
+        New-Item -ItemType Directory -Path $InstallerLogFolder
+    }
+    #---------------------------------------------------------------
+
+    #---------------------------------------------------------------
+    # Run Installers
+    Run_Installers $Installers_x86Hash $Installers_x64Hash 
+    #---------------------------------------------------------------
+
+    #---------------------------------------------------------------
+    # Run CopyFiles
+    Run_CopyFiles $CopyFiles_x86Hash $CopyFiles_x64Hash   
+    #---------------------------------------------------------------
+
+    #--------------------------------------------------------------
+    # Run located reg files (if any)
+    Run_RegFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+    #--------------------------------------------------------------
+    # Run located Generate_AppCapabilities files (if any)
+    Run_AppCapabilitiesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+
+    #--------------------------------------------------------------
+    # Run located Generate_AppPathFixes files (if any)
+    Run_AppPathFixesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+
+    #--------------------------------------------------------------
+    # Run located Generate_ShortcutFixes files (if any)
+    Run_ShortcutFixesFiles $executingScriptDirectory  
+    #---------------------------------------------------------------
+
+    #---------------------------------------------------------------
+    # Things like Remove Desktop & StartMenu Shortcuts, and Folders
+    foreach ($DesktopShortcutToRemove in $DesktopShortcutsToRemove) 
+    { 
+        Remove_DesktopShortcut $DesktopShortcutToRemove 
+    }
+    foreach ($StartMenuShortcutToRemove in $StartMenuShortcutsToRemove) 
+    { 
+        Remove_StartMenuShortcut $StartMenuShortcutToRemove 
+    }
+    foreach ($StartMenuFolderToRemove in $StartMenuFoldersToRemove) 
+    { 
+        Remove_StartMenuFolder $StartMenuFolderToRemove 
+    }
+    #-------------------------------------------------------------
+
+    #-------------------------------------------------------------
+    # Remove listed files
+    Run_RemoveFiles $FilesToRemove_x64 $FilesToRemove_x86
+    #------------------------------------------------------------
+
+
+    #-------------------------------------------------------------
+    # Remove listed Environment Variables
+    Run_RemoveEnvs $EnvsToRemove_x64 $EnvsToRemove_x86
+    #------------------------------------------------------------
+    
+
+    #-------------------------------------------------------------
+    # Disable listed Services
+    Run_DisableServices $ServicesToDisable_x64 $ServicesToDisable_x86
+    #------------------------------------------------------------
+
+
+    #------------------------------------------------------------
+    # Run located rngen scripts (if any)
+    Run_PostInstallNGenScripts $executingScriptDirectory  
+    #------------------------------------------------------------
+  }
+}
+
 
 
 #######################################################################################################################
@@ -144,114 +263,6 @@ Function SilentInstall_EnableMSIDebugging
   }
 }
 
-
-
-#######################################################################################################################
-<# 
-.SYNOPSIS
-SilentInstall_PrimaryInstallations
-
-erforms primary installations specified by pre-established variables and located files.
-
-.Description
-Utility to perform the primary installation activity.
-This includes:
-    Installers hashes (from variables)
-    CopyFile hashes  (from variables)
-    Reg files discovered the primary install folder
-    Application_Capabilies scripts discovered in the primary install folder
-    AppPathFixes scripts discovered in the primary install folder
-    ShortcutFixes scripts discovered in the primary install folder
-    Shortcut removals (from variables)
-    File Removals (from variables)
-    Environment Variable Removals (from variables)
-    NGen scripts discovered in the primary install folder.
-
-.PARAMETER
-None
-
-.EXAMPLE
-SilentInstall_PrimaryInstallations
-
-#>
-Function SilentInstall_PrimaryInstallations
-{
-  [CmdletBinding()]
-  param()
-  Process {
-    #---------------------------------------------------------------
-    # Make sure folder for log file is present
-    if (!(Test-Path -Path $InstallerLogFolder))
-    {
-        New-Item -ItemType Directory -Path $InstallerLogFolder
-    }
-    #---------------------------------------------------------------
-
-    #---------------------------------------------------------------
-    # Run Installers
-    Run_Installers $Installers_x86Hash $Installers_x64Hash 
-    #---------------------------------------------------------------
-
-    #---------------------------------------------------------------
-    # Run CopyFiles
-    Run_CopyFiles $CopyFiles_x86Hash $CopyFiles_x64Hash   
-    #---------------------------------------------------------------
-
-    #--------------------------------------------------------------
-    # Run located reg files (if any)
-    Run_RegFiles $executingScriptDirectory  
-    #---------------------------------------------------------------
-
-    #--------------------------------------------------------------
-    # Run located Generate_AppCapabilities files (if any)
-    Run_AppCapabilitiesFiles $executingScriptDirectory  
-    #---------------------------------------------------------------
-
-
-    #--------------------------------------------------------------
-    # Run located Generate_AppPathFixes files (if any)
-    Run_AppPathFixesFiles $executingScriptDirectory  
-    #---------------------------------------------------------------
-
-
-    #--------------------------------------------------------------
-    # Run located Generate_ShortcutFixes files (if any)
-    Run_ShortcutFixesFiles $executingScriptDirectory  
-    #---------------------------------------------------------------
-
-    #---------------------------------------------------------------
-    # Things like Remove Desktop & StartMenu Shortcuts, and Folders
-    foreach ($DesktopShortcutToRemove in $DesktopShortcutsToRemove) 
-    { 
-        Remove_DesktopShortcut $DesktopShortcutToRemove 
-    }
-    foreach ($StartMenuShortcutToRemove in $StartMenuShortcutsToRemove) 
-    { 
-        Remove_StartMenuShortcut $StartMenuShortcutToRemove 
-    }
-    foreach ($StartMenuFolderToRemove in $StartMenuFoldersToRemove) 
-    { 
-        Remove_StartMenuFolder $StartMenuFolderToRemove 
-    }
-    #-------------------------------------------------------------
-
-    #-------------------------------------------------------------
-    # Remove listed files
-    Run_RemoveFiles $FilesToRemove_x64 $FilesToRemove_x86
-    #------------------------------------------------------------
-
-
-    #-------------------------------------------------------------
-    # Remove listed Environment Variables
-    Run_RemoveEnvs $EnvsToRemove_x64 $EnvsToRemove_x86
-    #------------------------------------------------------------
-
-    #------------------------------------------------------------
-    # Run located rngen scripts (if any)
-    Run_PostInstallNGenScripts $executingScriptDirectory  
-    #------------------------------------------------------------
-  }
-}
 
 #######################################################################################################################
 <#
@@ -1294,7 +1305,7 @@ function Run_RemoveFiles(
         {
             if ($RemFile.Length -gt 0)
             {
-                $log = 'removing ' + $RemFile
+                $log = '    Removing ' + $RemFile
                 LogMe_AndDisplay $log $InstallerLogFile
                 $err = Remove-Item -Force -Recurse $RemFile *>&1
                 LogMe_AndDisplay $err  $InstallerLogFile
@@ -1307,7 +1318,7 @@ function Run_RemoveFiles(
         {
             if ($RemFile.Length -gt 0)
             {
-                $log = 'removing ' + $RemFile
+                $log = '    Removing ' + $RemFile
                 LogMe_AndDisplay $log $InstallerLogFile
                 $err = Remove-Item -Force -Recurse $RemFile *>&1
                 LogMe_AndDisplay $err  $InstallerLogFile
@@ -1330,13 +1341,16 @@ function Run_RemoveEnvs(
     {
         foreach ($RemEnv in $EnvsToRemove_x64)
         {
-            $log = 'removing ' + $RemEnv
-            LogMe_AndDisplay $log $InstallerLogFile
-            $envname = 'env:'+$RemEnv
-            if (test-path -Path $envname)
+            if ($RemEnv -ne "")
             {
-                $err = remove-item -force -path $envname *>&1
-                LogMe_AndDisplay $err  $InstallerLogFile
+                $log = '    Removing ' + $RemEnv
+                LogMe_AndDisplay $log $InstallerLogFile
+                $envname = 'env:'+$RemEnv
+                if (test-path -Path $envname)
+                {
+                    $err = remove-item -force -path $envname *>&1
+                    LogMe_AndDisplay $err  $InstallerLogFile
+                }
             }
         }
     }
@@ -1344,18 +1358,75 @@ function Run_RemoveEnvs(
     {
         foreach ($RemEnv in $EnvsToRemove_x86)
         {
-            $log = 'removing ' + $RemEnv
-            LogMe_AndDisplay $log $InstallerLogFile
-            $envname = 'env:'+$RemEnv
-            if (test-path -Path $envname)
+            if ($RemEnv -ne "")
             {
-                $err = remove-item -force -path $envname *>&1
-                LogMe_AndDisplay $err  $InstallerLogFile
+                $log = '    Removing ' + $RemEnv
+                LogMe_AndDisplay $log $InstallerLogFile
+                $envname = 'env:'+$RemEnv
+                if (test-path -Path $envname)
+                {
+                    $err = remove-item -force -path $envname *>&1
+                    LogMe_AndDisplay $err  $InstallerLogFile
+                }
             }
         }
     }
     LogMe_AndDisplay "RemoveEnvs Completed." $InstallerLogFile 
 }
+
+
+
+###################################################################################################
+# Function to Disable listed Services
+function Run_DisableServices(
+                        [string[]]$ServicesToDisble_x64,
+                        [string[]]$ServicesToDisble_x86)
+{
+    LogMe_AndDisplay "Starting DisableServices."  $InstallerLogFile
+    if ([Environment]::Is64BitOperatingSystem -eq $true ) 
+    {
+        foreach ($DisabSvc in $ServicesToDisble_x64)
+        {
+            if ($DisabSvc -ne "")
+            {
+                $log = '    Disabling ' + $DisabSvc
+                LogMe_AndDisplay $log $InstallerLogFile
+                if ( get-service -name $DisabSvc)
+                {
+                    $err = set-service -name $DisabSvc -StartupType Disabled *>&1
+                    LogMe_AndDisplay $err $InstallerLogFile
+                }
+                else
+                {
+                    LogMe_AndDisplay "    *** Service not found?" $InstallerLogFile
+                }
+            }
+        }
+    }
+    else 
+    {
+        foreach ($DisabSvc in $ServicesToDisble_x86)
+        {
+            if ($DisabSvc -ne "")
+            {
+                $log = '    Disabling ' + $DisabSvc
+                LogMe_AndDisplay $log $InstallerLogFile
+                if ( get-service -name $DisabSvc)
+                {
+                    $err = set-service -name $DisabSvc -StartupType Disabled *>&1
+                    LogMe_AndDisplay $err $InstallerLogFile
+                }
+                else
+                {
+                    LogMe_AndDisplay "    *** Service not found?" $InstallerLogFile
+                }
+            }
+        }
+    }
+    LogMe_AndDisplay "DisableServices Completed." $InstallerLogFile 
+}
+
+
 
 ###################################################################################################
 # Function to find/run Post-Install NGen script files
@@ -1376,7 +1447,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
-                $log = '    running script for x64'+ $xtmp
+                $log = '    Running script for x64'+ $xtmp
                 LogMe_AndDisplay $log $InstallerLogFile 
                 Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
@@ -1387,7 +1458,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
-                $log = '    running script for x86'+ $xtmp 
+                $log = '    Running script for x86'+ $xtmp 
                 LogMe_AndDisplay $log $InstallerLogFile 
                 Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
@@ -1396,7 +1467,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         }
         elseif ($xtmp -like "*_PostInstall_ExtraNgen.ps1") 
         {
-            $log = '    running script'+ $xtmp 
+            $log = '    Running script'+ $xtmp 
             LogMe_AndDisplay $log $InstallerLogFile 
             Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""      -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
@@ -1455,7 +1526,18 @@ function Get_PowerShellx86Path {
 # Function to create a registry key, but only if not already present
 function Make_KeyIfNotPresent([string]$HKwhich, [string]$rkey ) {
     if (Test-Path "$($HKwhich):\$($rkey)") { } else {
+        LogMe_AndDisplay "Creating key $($HKwhich):\$($rkey)"
         New-Item -Path "$($HKwhich):\$($rkey)" -Force
+    }
+}
+
+
+###################################################################################################
+# Function to create a registry key, but only if not already present
+function Make_FolderIfNotPresent( [string]$folder ) {
+    if (Test-Path "$($folder)") { } else {
+        LogMe_AndDisplay "Creating folder $($folder)"
+        New-Item -ItemType Directory -Path "$($folder)" -Force
     }
 }
 

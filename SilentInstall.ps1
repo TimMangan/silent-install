@@ -21,15 +21,15 @@
 #    Customize these variables to your needs where it says "Make Modifications HERE".
 #      $Installers_x86Hash:
 #      $Installers_x64Hash:
-#            Entries added are generally a Installer File as key, and command line arguments as the value. 
-#            These are OrderedDictionaries one for installation on X86 operating systems, and one for x64. Values are added in pair form key:value.
-#            If you are using a 32-bit installer, the x86 and x64 are probably identical, but seperating them allows for apps with different installers for x64.
+#            Entries are OrderedDictionaries one for installation on X86 operating systems, and one for x64. Values are added in pair form key,value.
+#            Generally, the key is an Installer File, and command line arguments as the value. 
+#            If you are using a 32-bit installer, the x86 and x64 are probably identical, but seperating them into individual variables allows for apps with different installers for x64.
 #            The appropriate dictionary will be used depending on the OS bitness.
 #            There is specific support for the filenames ending in .MSI, .MSP, .EXE, and .ZIP
 #            Add entries in the list in for form:
 #                $variablehash.Add('foo.msi','/qn, TRANSFORM="foo.mst"')
-#                Note that it is necessary to separate out arguments into a list by adding in the commons on the second argument. This is because PowerShell's Start-Process requires this.
-#            In the case of a key ending in .ZIP, the hash value is the folder to extract files into.
+#                Note that the value field may also be a comma separated list or arguments (the commas are removed) when it is necessary to separate out arguments as in the case above. This is because PowerShell's Start-Process requires this.
+#            In the case of a key ending in .ZIP, the hash value is the folder to extract files onto.
 #      $CopyFiles_x86Hash:
 #      $CopyFiles_x64Hash:
 #            Entries are a file as key, and destination folder (or name) as value.
@@ -47,10 +47,13 @@
 #            The relative path+name should be what follows after "...\Start Menu\Programs\"
 #      $FilesToRemove_x86:
 #      $FiesToRemove_x64:
-#            Entries are a comma seperated list of file paths (both directories and files may be listed for removal)
+#            Entries are a comma separated list of file paths (both directories and files may be listed for removal)
 #      $EnvsToRemove_x86:
 #      $EnvsToRemove_x64:
-#            Entries are a comma seperated list of environment variable names, without the leading $
+#            Entries are a comma separated list of environment variable names, without the $ or %
+#      $ServicesToDisable_x86
+#      $ServicesToDisable_x64
+#            Entries are a comma separated list of services to be disabled.
 #      $DoFlushNgen:
 #            When set to $true, forces completion of NGEN compilation for .Net apps that might still be in the queue at the end of all installations.
 #            You may set to false if not needed.
@@ -104,6 +107,8 @@ $Installers_x86Hash.Add( 'xxx_.exe', '/S' )
 
 #$CopyFiles_x64Hash.Add( $executingScriptDirectory+'\xxx_x64.dll', 'C:\Program Files\xxx\PlugIns' )
 #$CopyFiles_x86Hash.Add( $executingScriptDirectory+'\xxx_x32.dll', 'C:\Program Files\xxx\PlugIns' )
+#$CopyFiles_x64Hash.Add( $executingScriptDirectory+'\foo.ini', $env:LOCALAPPDATA+'\xxx' )
+#$CopyFiles_x86Hash.Add( $executingScriptDirectory+'\foo.ini', $env:LOCALAPPDATA+'\xxx' )
 
 # note: This file contains output of this script and gets copyied to the base folder for packages by the autosequencer, so
 #       you should use the package name as part of name as it will overwrite.
@@ -119,10 +124,13 @@ $InstallerLogFile = $InstallerLogFolder+'\Log_xxx.txt'
 #$EnvsToRemove_x64 = "'ONEDRIVE', 'SOMETHINGELSE'"
 #$EnvsToRemove_x86 = "'ONEDRIVE'"
 
+#$ServicesToDisable_x64 = "'Service Name'"
+#$ServicesToDisable_x86 = "'Service Name'"
+
 $DoFlushNgen = $true
 
 # Optional msi debug logging, uncomment the next line. You may need to manually copy the msi log file back out!
-#SilentInstall-EnableMSIDebugging "voicewarmupx"
+#SilentInstall_EnableMSIDebugging "voicewarmupx"
 
 #                   end of PRIMARY CUSTOMIZATION area
 #=================================================================================
@@ -150,10 +158,12 @@ SilentInstall_PrimaryInstallations
 #if ([Environment]::Is64BitOperatingSystem -eq $true ) 
 #{
 #    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Program Files\installflder\app.exe"
-#}
+#    Move_Key 'HKLM' 'SOFTWARE\Microsoft\Internet Explorer\Extensions' '{29e5421f-6f05-4a76-938f-d7e5884f23d8}' 'HKCU'
 #else
 #{
 #    New_Shortcut "$($env:ProgramData)\Microsoft\Windows\Start Menu\Programs\Folder\App.lnk" "C:\Windows\Systemre\cmd.exe" -Arguments "/k" -WorkDir "c:\Python36" -Icon "C:\Python36\python.exe"
+#    Move_Key 'HKLM' 'SOFTWARE\WOW6432Node\Microsoft\Internet Explorer\Extensions' '{29e5421f-6f05-4a76-938f-d7e5884f23d8}' 'HKCU'
+
 #}
 #                   end of ADDITIONAL CUSTOMIZATION AREA
 #========================================================================
