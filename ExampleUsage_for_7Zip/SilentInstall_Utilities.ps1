@@ -1543,6 +1543,22 @@ function Make_FolderIfNotPresent( [string]$folder ) {
 
 
 
+###################################################################################################
+# Function to locate the PVAD folder and return it as an object.
+#  Use  $PVAD = Find_PVAD
+#         $PVAD.FullPath
+Function Find_PVAD
+{
+    $LookIn = $env:SystemDrive+'\'
+    foreach ($item in Get-ChildItem $LookIn )
+    {
+        if ($item.Name -like '*-*-*-*')
+        {
+           return $item
+        }
+   }
+}
+
 #######################################################################################################################
 <#
 .SYNOPSIS
