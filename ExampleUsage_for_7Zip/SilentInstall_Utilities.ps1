@@ -106,24 +106,25 @@ Function SilentInstall_PrimaryInstallations
     #---------------------------------------------------------------
 
     #--------------------------------------------------------------
-    # Run located Generate_AppCapabilities files (if any)
+    # Run located Generate_AppCapabilities files (if any, should be replaced by Apply_AutomatedFixups) 
     Run_AppCapabilitiesFiles $executingScriptDirectory  
     #---------------------------------------------------------------
 
 
     #--------------------------------------------------------------
-    # Run located Generate_AppPathFixes files (if any)
+    # Run located Generate_AppPathFixes files (if any, should be replaced by Apply_AutomatedFixups)
     Run_AppPathFixesFiles $executingScriptDirectory  
     #---------------------------------------------------------------
 
 
     #--------------------------------------------------------------
-    # Run located Generate_ShortcutFixes files (if any)
+    # Run located Generate_ShortcutFixes files (if any, should be replaced by Apply_AutomatedFixups)
     Run_ShortcutFixesFiles $executingScriptDirectory  
     #---------------------------------------------------------------
 
     #---------------------------------------------------------------
     # Things like Remove Desktop & StartMenu Shortcuts, and Folders
+    LogMe_AndDisplay "Removing Shortcuts Links" $InstallerLogFile
     foreach ($DesktopShortcutToRemove in $DesktopShortcutsToRemove) 
     { 
         Remove_DesktopShortcut $DesktopShortcutToRemove 
@@ -136,6 +137,7 @@ Function SilentInstall_PrimaryInstallations
     { 
         Remove_StartMenuFolder $StartMenuFolderToRemove 
     }
+    LogMe_AndDisplay "Removing Shortcuts Links Completed" $InstallerLogFile
     #-------------------------------------------------------------
 
     #-------------------------------------------------------------
@@ -157,7 +159,13 @@ Function SilentInstall_PrimaryInstallations
 
 
     #------------------------------------------------------------
-    # Run located rngen scripts (if any)
+    # Run located AutomatedFixes scripts (if any)
+    Run_PostInstallAutomatedFixesScripts $executingScriptDirectory  
+    #------------------------------------------------------------
+
+
+    #------------------------------------------------------------
+    # Run located rngen scripts (if any, should be replaced by Apply_AutomatedFixups)
     Run_PostInstallNGenScripts $executingScriptDirectory  
     #------------------------------------------------------------
   }
@@ -1176,7 +1184,7 @@ function Run_ShortcutFixesFiles([string]$executingScriptDirectory)
     { 
         LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
     }
-    LogMe_AndDisplay "Post-Install Shortcut Fixess scripts complete." $InstallerLogFile  
+    LogMe_AndDisplay "Post-Install Shortcut Fixes scripts complete." $InstallerLogFile  
 }
 
 
@@ -1188,36 +1196,42 @@ function Remove_DesktopShortcut([string]$ShortcutName)
 {
     if ($ShortcutName.Length -gt 0)
     {
-        LogMe_AndDisplay 'Removing Desktop Shortcuts Links' $InstallerLogFile
+        LogMe_AndDisplay "    Remove Request Desktop Shortcut Link: $($ShortcutName)" $InstallerLogFile
         $shortcutnamewithlnk = $ShortcutName
         if ( !($ShortcutName -like "*.lnk")) {  $shortcutnamewithlnk = $ShortcutName + '.lnk' }
-        #LogMe_AndDisplay 'effective name to match = $shortcutnamewithlnk' $InstallerLogFile
+        ###LogMe_AndDisplay "    effective name to match = $($shortcutnamewithlnk)" $InstallerLogFile
 
         $testpublicdesktop = $env:PUBLIC + '\Desktop'
         $testuserdesktop =  $env:USERPROFILE + '\Desktop'
     
         Get-ChildItem $testpublicdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
-            #LogMe_AndDisplay 'Checking $_'  $InstallerLogFile
+            ###LogMe_AndDisplay "Checking $($_)"  $InstallerLogFile
             if ($_.Name -eq $shortcutnamewithlnk ) 
             { 
-                $log =  '    Removing '+ $_FullName 
+                $log =  "        Removing $($_.FullName)" 
                 LogMe_AndDisplay $log $InstallerLogFile
                 $err = Remove-Item $_.FullName *>&1
                 LogMe_AndDisplay $err  $InstallerLogFile
             }
         }
     
-        Get-ChildItem  $testuserdesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
-            #write-host 'checking' $_ '.name=' $_.Name 
+        ###LogMe_AndDisplay "    User desktop $($testuserDesktop)" $InstallerLogFile
+        ###$xxx = dir  $testuserDesktop
+        ###LogMe_AndDisplay $xxx $InstallerLogFile
+        Get-ChildItem  $testuserDesktop | Where-Object { $_.Extension -eq '.lnk' } | ForEach-Object {
+            ###LogMe_AndDisplay "    checking Name= $($_.Name) and FullName= $($_.FullName)" 
             if ($_.Name -eq $shortcutnamewithlnk  ) 
             { 
-                $log = '    Removing'+$_.FullName  
+                $log = '        Removing'+$_.FullName  
                 LogMe_AndDisplay $log $InstallerLogFile
                 $err = Remove-Item $_.FullName *>&1
                 LogMe_AndDisplay $err  $InstallerLogFile
             }
         }
-        LogMe_AndDisplay 'Desktop Shortcut Link removals complete.' $InstallerLogFile 
+        ###LogMe_AndDisplay "    User desktop $($testuserDesktop)" $InstallerLogFile
+        ###$xxx = Get-ChildItem  $testuserDesktop
+        ###LogMe_AndDisplay $xxx $InstallerLogFile
+        LogMe_AndDisplay "    Desktop Shortcut Remove Request $($ShortcutName) complete." $InstallerLogFile 
     }
 }
 
@@ -1231,17 +1245,17 @@ function Remove_StartMenuShortcut([string]$RelativeName)
 {
     if ($RelativeName.Length -gt 0)
     {
-        LogMe_AndDisplay 'Removing StartMenu Shortcuts Links' $InstallerLogFile
+        LogMe_AndDisplay "    Remove Request StartMenu Shortcut Link $($RelativeName)" $InstallerLogFile
         $relativenamewithlnk = $RelativeName
         if ( !($RelativeName -like "*.lnk")) {  $relativenamewithlnk = $RelativeName + '.lnk' }
-        LogMe_AndDisplay "    Effective name to match =  $relativenamewithlnk " $InstallerLogFile
+        LogMe_AndDisplay "        Effective name to match =  $relativenamewithlnk " $InstallerLogFile
 
         $testpublicstartmenu = $env:ALLUSERSPROFILE + '\Microsoft\Windows\Start Menu\Programs\' + $relativenamewithlnk
         $testuserstartmenu   = $env:APPDATA +  '\Microsoft\Windows\Start Menu\Programs\' + $relativenamewithlnk
 
         if (Test-Path -Path $testpublicstartmenu ) 
         { 
-            $log = '    Removing '+ $testpublicstartmenu 
+            $log = '        Removing '+ $testpublicstartmenu 
             LogMe_AndDisplay $log $InstallerLogFile 
             $err = Remove-Item $testpublicstartmenu *>&1
             LogMe_AndDisplay $err  $InstallerLogFile
@@ -1249,13 +1263,13 @@ function Remove_StartMenuShortcut([string]$RelativeName)
         #else { LogMe_AndDisplay "    No such $testpublicstartmenu " $InstallerLogFile }
         if (Test-Path -Path $testuserstartmenu ) 
         { 
-            $log = '    Removing '+$testuserstartmenu 
+            $log = '        Removing '+$testuserstartmenu 
             LogMe_AndDisplay $log $InstallerLogFile 
             $err = Remove-Item $testuserstartmenu *>&1
             LogMe_AndDisplay $err  $InstallerLogFile
         }
         #else { LogMe_AndDisplay "    No such $testuserstartmenu " $InstallerLogFile }
-        LogMe_AndDisplay 'StartMenu Shortcut Link removals complete.' $InstallerLogFile
+        LogMe_AndDisplay "    StartMenu Shortcut Remove Request $($RelativeName) complete." $InstallerLogFile
     }
 }
 
@@ -1268,25 +1282,25 @@ function Remove_StartMenuFolder([string]$FolderName)
 {
     if ($FolderName.Length -gt 0)
     {
-        LogMe_AndDisplay 'Removing StartMenu Folders' $InstallerLogFile
+        LogMe_AndDisplay "    Remove Request StartMenu Folder $($FolderName)" $InstallerLogFile
         $testpublicstartmenu = $env:ALLUSERSPROFILE + '\Microsoft\Windows\Start Menu\Programs\' + $FolderName
         $testuserstartmenu   = $env:APPDATA +  '\Microsoft\Windows\Start Menu\Programs\' + $FolderName
 
         if (Test-Path -Path $testpublicstartmenu ) 
         { 
-            $log = '    Removing '+$testpublicstartmenu 
+            $log = '        Removing '+$testpublicstartmenu 
             LogMe_AndDisplay $log $InstallerLogFile 
             $err = Remove-Item -Force -Recurse $testpublicstartmenu  *>&1
             LogMe_AndDisplay $err  $InstallerLogFile
         }
         if (Test-Path -Path $testuserstartmenu ) 
         { 
-            $log = '    Removing '+$testuserstartmenu 
+            $log = '        Removing '+$testuserstartmenu 
             LogMe_AndDisplay $log $InstallerLogFile
             $err = Remove-Item -Force -Recurse $testuserstartmenu  *>&1
             LogMe_AndDisplay $err  $InstallerLogFile
         }
-        LogMe_AndDisplay 'StartMenu Folder removals complete.' $InstallerLogFile
+        LogMe_AndDisplay "    StartMenu Remove Request Folder $($FolderName) complete." $InstallerLogFile
     }
 }
 
@@ -1447,7 +1461,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         {
             if ([Environment]::Is64BitOperatingSystem -eq $true) 
             {
-                $log = '    Running script for x64'+ $xtmp
+                $log = '    Running script for x64 '+ $xtmp
                 LogMe_AndDisplay $log $InstallerLogFile 
                 Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
@@ -1458,7 +1472,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         {
             if ([Environment]::Is64BitOperatingSystem -eq $false) 
             {
-                $log = '    Running script for x86'+ $xtmp 
+                $log = '    Running script for x86 '+ $xtmp 
                 LogMe_AndDisplay $log $InstallerLogFile 
                 Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
                 ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
@@ -1467,7 +1481,7 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         }
         elseif ($xtmp -like "*_PostInstall_ExtraNgen.ps1") 
         {
-            $log = '    Running script'+ $xtmp 
+            $log = '    Running script '+ $xtmp 
             LogMe_AndDisplay $log $InstallerLogFile 
             Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""      -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
@@ -1479,6 +1493,66 @@ function Run_PostInstallNGenScripts([string]$executingScriptDirectory)
         LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
     }
     LogMe_AndDisplay "Post-Install NGEN scripts complete." $InstallerLogFile  
+}
+
+
+
+
+###################################################################################################
+# Function to find/run Post-Install NGen script files
+#    This will find all ps1 files with names matchine "*Post_Install_ExtraNGEN*" in the given folder
+#    Those whose base names end in x86 or x64 will only be run on the same bitness as the OS,
+#    All others will just be run.
+#    No control over the order of running is provided.
+function Run_PostInstallAutomatedFixesScripts([string]$executingScriptDirectory)
+{
+    LogMe_AndDisplay "Starting any Post-Install AutomatedFixes scripts." $InstallerLogFile 
+    $cnt = 0
+    $psexeNative = Get_PowerShellNativePath
+    #---------------------------------------------------------------
+    #Look for a .ps1 file to import
+    Get-ChildItem $executingScriptDirectory | Where-Object { $_.Extension.ToLower() -eq '.ps1' } | ForEach-Object {
+        $xtmp = $_.FullName
+        if ($xtmp -like "*OSApply_AutomatedFixes.ps1")
+        {
+            if ($xtmp -like "*x64OSApply_AutomatedFixes.ps1") 
+            {
+                if ([Environment]::Is64BitOperatingSystem -eq $true) 
+                {
+                    $log = '    Running AutomatedFixes script for x64 '+ $xtmp
+                    LogMe_AndDisplay $log $InstallerLogFile 
+                    Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                    ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
+                    $cnt = $cnt + 1
+                }
+            }
+            elseif ($xtmp -like "*x86OSApply_AutomatedFixes.ps1" ) 
+            {
+                if ([Environment]::Is64BitOperatingSystem -eq $false) 
+                {
+                    $log = '    Running AutomatedFixes script for x86 '+ $xtmp 
+                    LogMe_AndDisplay $log $InstallerLogFile 
+                    Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+                    ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
+                    $cnt = $cnt + 1
+                }
+            }
+        }
+        elseif ($xtmp -like "*_Apply_AutomatedFixes.ps1") 
+        {
+            $log = '    Running AutomatedFixes script '+ $xtmp 
+            LogMe_AndDisplay $log $InstallerLogFile 
+            Start-Process -Wait -FilePath "$psexeNative"  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$xtmp`""      -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
+            ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile $false $true
+            $cnt = $cnt + 1
+        }
+        
+    }
+    if ($cnt -eq 0) 
+    { 
+        LogMe_AndDisplay "    No valid ps1 files were located."  $InstallerLogFile 
+    }
+    LogMe_AndDisplay "AutomatedFixes scripts complete." $InstallerLogFile  
 }
 
 
@@ -1543,22 +1617,6 @@ function Make_FolderIfNotPresent( [string]$folder ) {
 
 
 
-###################################################################################################
-# Function to locate the PVAD folder and return it as an object.
-#  Use  $PVAD = Find_PVAD
-#         $PVAD.FullPath
-Function Find_PVAD
-{
-    $LookIn = $env:SystemDrive+'\'
-    foreach ($item in Get-ChildItem $LookIn )
-    {
-        if ($item.Name -like '*-*-*-*')
-        {
-           return $item
-        }
-   }
-}
-
 #######################################################################################################################
 <#
 .SYNOPSIS
@@ -1593,7 +1651,7 @@ Function Flush_NGensQueues
     {
         if(Test-Path $ng )
         {
-            $log =  "    Flushing queue with"+$ng
+            $log =  "    Flushing queue with "+$ng
             LogMe_AndDisplay $log $InstallerLogFile 
             Start-Process -Filepath $ng executeQueuedItems  -Wait  -RedirectStandardError redir_error.log -RedirectStandardOutput redir_out.log
             ProcessLogMe_AndDisplay 'redir_error.log' 'redir_out.log'  $InstallerLogFile
@@ -1632,8 +1690,8 @@ function ProcessLogMe_AndDisplay([string]$errorlogfile, [string]$outlogfile, [st
       Get-Content $errorlogfile 
       Get-Content $outlogfile
   }
-  Get-Content $errorlogfile >> $InstallLogFile
-  Get-Content $outlogfile >> $InstallLogFile
+  Get-Content $errorlogfile >> $InstallerLogFile
+  Get-Content $outlogfile >> $InstallerLogFile
   if ($DeleteAfter)
   {
     remove-item $errorlogfile
