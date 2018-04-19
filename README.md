@@ -1,3 +1,4 @@
+
 # silent-install
 A PowerShell framework for desktop application installations.
 
@@ -11,3 +12,6 @@ A PowerShell module would contain the common functions and data structures that 
 
 ## More Info
 Please see the Wiki on the github project (http://github.com/TimMangan/silent-install ) for more information about the project.
+
+## Deprication Notice
+I intend to abbandon this project.  It was usefull, but without sufficient interest it has now been replaced by a non-open source PowerShell packaged called "PassiveInstall".  The new PassiveInstall PowerShell modules are free for download at http://www.tmurgent.com. They represent a complete re-write of this effort, and are easier for IT Pros to use, and supports both passive and silent installations.  There is also a free online training module at http://www.tmurgent.com/educate. 
